@@ -3,6 +3,7 @@ import { useGameStore } from './store';
 import { ensureBgm, syncBgm, duckBgm, BGM_VOLUME } from './bgm';
 
 class FakeAudio {
+  static instances: FakeAudio[] = [];
   src: string;
   loop = false;
   volume = 1;
@@ -11,6 +12,7 @@ class FakeAudio {
   pauseCalls = 0;
   constructor(src: string) {
     this.src = src;
+    FakeAudio.instances.push(this);
   }
   play(): Promise<void> {
     this.playCalls++;
@@ -116,5 +118,17 @@ describe('bgm', () => {
     useGameStore.setState({ started: false });
     syncBgm();
     expect(a.playCalls).toBe(calls);
+  });
+
+  it('반복 호출해도 오디오 인스턴스가 늘지 않는다', () => {
+    bgm();
+    const n = FakeAudio.instances.length;
+    syncBgm();
+    vi.advanceTimersByTime(1000);
+    duckBgm();
+    vi.advanceTimersByTime(1000);
+    syncBgm();
+    expect(ensureBgm()).toBe(bgm());
+    expect(FakeAudio.instances.length).toBe(n);
   });
 });

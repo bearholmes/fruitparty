@@ -6,16 +6,29 @@ const FADE_IN_MS = 800;
 const FADE_OUT_MS = 250;
 const DUCK_MS = 600;
 
-let audio: HTMLAudioElement | null = null;
+/* HMR로 모듈이 재실행돼도 인스턴스가 늘지 않도록 globalThis에 보관.
+   모듈 변수는 재실행마다 초기화되지만 globalThis는 페이지 수명 동안 유지됨. */
+const BGM_KEY = '__fruitparty_bgm';
+
+function getBgm(): HTMLAudioElement | null {
+  return (globalThis as unknown as Record<string, HTMLAudioElement | null>)[BGM_KEY] ?? null;
+}
+
+function setBgm(a: HTMLAudioElement | null): void {
+  (globalThis as unknown as Record<string, HTMLAudioElement | null>)[BGM_KEY] = a;
+}
+
 let fadeTimer: number | null = null;
 
 export function ensureBgm(): HTMLAudioElement | null {
-  if (!audio && typeof Audio !== 'undefined') {
-    audio = new Audio(`${import.meta.env.BASE_URL}bgm.wav`);
-    audio.loop = true;
-    audio.volume = BGM_VOLUME;
-  }
-  return audio;
+  const existing = getBgm();
+  if (existing) return existing;
+  if (typeof Audio === 'undefined') return null;
+  const a = new Audio(`${import.meta.env.BASE_URL}bgm.wav`);
+  a.loop = true;
+  a.volume = BGM_VOLUME;
+  setBgm(a);
+  return a;
 }
 
 function clearFade(): void {

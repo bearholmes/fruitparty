@@ -236,6 +236,7 @@ export function useSuika() {
           frictionAir: 0.008,
           density: 0.0012 + nl * 0.00025,
         }) as FruitBody;
+        Body.scale(body, FRUITS[nl].hitbox.x, FRUITS[nl].hitbox.y);
         body.fruitLevel = nl;
         Composite.add(world, body);
         pop(mx, my, nl);
@@ -258,7 +259,7 @@ export function useSuika() {
       ctx.globalAlpha = ghost ? 0.92 : 1;
       ctx.translate(x, y);
       ctx.rotate(angle);
-      ctx.drawImage(s.cv, -s.cx, -s.cy, s.S, s.S);
+      ctx.drawImage(s.cv, -s.cx, -s.cy - FRUITS[lv].r * FRUITS[lv].artOffsetY, s.S, s.S);
       ctx.restore();
     };
 
@@ -269,7 +270,10 @@ export function useSuika() {
       let maxT = 0;
       for (const b of bodies) {
         const lv = (b as FruitBody).fruitLevel ?? 0;
-        if (b.position.y - FRUITS[lv].r < DEADLINE_Y && Math.abs(b.velocity.y) < 0.35) {
+        if (
+          b.position.y - FRUITS[lv].r * FRUITS[lv].hitbox.y < DEADLINE_Y &&
+          Math.abs(b.velocity.y) < 0.35
+        ) {
           const t = (st.overTime.get(b.id) ?? 0) + dt;
           st.overTime.set(b.id, t);
           maxT = Math.max(maxT, t);
@@ -355,7 +359,7 @@ export function useSuika() {
         p.t += 0.03;
         ctx.save();
         ctx.globalAlpha = 1 - p.t;
-        ctx.font = `800 ${p.size}px Pretendard`;
+        ctx.font = `800 ${p.size}px Roboto, Pretendard, sans-serif`;
         ctx.textAlign = 'center';
         ctx.fillStyle = p.color;
         ctx.fillText(p.text, p.x, p.y - p.t * 46);
@@ -380,7 +384,7 @@ export function useSuika() {
         const remain = Math.max(0, OVER_LIMIT_SEC - st.dangerT).toFixed(1);
         const label = `위험! ${remain}초`;
         ctx.save();
-        ctx.font = '800 26px Pretendard, sans-serif';
+        ctx.font = '800 26px Roboto, Pretendard, sans-serif';
         const w = ctx.measureText(label).width + 36;
         ctx.fillStyle = 'rgba(230,57,70,.93)';
         ctx.beginPath();
@@ -417,8 +421,8 @@ export function useSuika() {
       const r = canvas.getBoundingClientRect();
       const px = ((clientX - r.left) / r.width) * BOARD_W;
       st.dropX = Math.max(
-        WALL + FRUITS[st.current].r,
-        Math.min(BOARD_W - WALL - FRUITS[st.current].r, px),
+        WALL + FRUITS[st.current].r * FRUITS[st.current].hitbox.x,
+        Math.min(BOARD_W - WALL - FRUITS[st.current].r * FRUITS[st.current].hitbox.x, px),
       );
     };
     const onMove = (e: MouseEvent): void => {
@@ -455,9 +459,16 @@ export function useSuika() {
         e.code === 'Space'
       )
         e.preventDefault();
-      if (e.code === 'ArrowLeft') st.dropX = Math.max(WALL + FRUITS[st.current].r, st.dropX - step);
+      if (e.code === 'ArrowLeft')
+        st.dropX = Math.max(
+          WALL + FRUITS[st.current].r * FRUITS[st.current].hitbox.x,
+          st.dropX - step,
+        );
       if (e.code === 'ArrowRight')
-        st.dropX = Math.min(BOARD_W - WALL - FRUITS[st.current].r, st.dropX + step);
+        st.dropX = Math.min(
+          BOARD_W - WALL - FRUITS[st.current].r * FRUITS[st.current].hitbox.x,
+          st.dropX + step,
+        );
       if (e.code === 'Space' || e.key === 'Enter') {
         (document.activeElement as HTMLElement | null)?.blur?.();
         if (!store().started) startRef.current();
@@ -513,6 +524,7 @@ export function useSuika() {
       frictionAir: 0.008,
       density: 0.0012 + st.current * 0.00025,
     }) as FruitBody;
+    Body.scale(body, FRUITS[st.current].hitbox.x, FRUITS[st.current].hitbox.y);
     body.fruitLevel = st.current;
     Body.setVelocity(body, { x: 0, y: 2 });
     Composite.add(st.engine.world, body);

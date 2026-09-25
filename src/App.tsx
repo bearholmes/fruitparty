@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
-  ArrowDownToLine,
   Camera,
   BookOpen,
   ChevronLeft,
@@ -10,7 +9,6 @@ import {
   Play,
   RotateCcw,
   Trophy,
-  Vibrate,
   Volume2,
   VolumeX,
   X,
@@ -211,18 +209,18 @@ export default function App() {
               <ChevronLeft size={22} />
             </button>
             <button className="btn big" onClick={drop} disabled={busy}>
-              DROP <ArrowDownToLine size={20} />
-            </button>
-            <button className="btn round" onClick={moveRight} aria-label="오른쪽으로 이동">
-              <ChevronRight size={22} />
+              DROP
             </button>
             <button
-              className="btn"
+              className="btn shake"
               onClick={shake}
               disabled={!canShake || busy || (danger && dangerShakeLeft <= 0)}
               title="박스를 흔듭니다 (↑/↓)"
             >
-              <Vibrate size={18} /> {danger ? `흔들기 ${dangerShakeLeft}` : '흔들기'}
+              {danger ? `흔들기 ${dangerShakeLeft}` : '흔들기'}
+            </button>
+            <button className="btn round" onClick={moveRight} aria-label="오른쪽으로 이동">
+              <ChevronRight size={22} />
             </button>
           </div>
         </section>
