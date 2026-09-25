@@ -14,6 +14,8 @@ import {
   X,
 } from 'lucide-react';
 import { FRUITS } from './game/art';
+import { previewBgm } from './game/bgm';
+import { sfx } from './game/sfx';
 import { useGameStore } from './game/store';
 import { useSuika } from './game/useSuika';
 
@@ -337,13 +339,18 @@ export default function App() {
             <label className="audio-control">
               <span>배경음악</span>
               <input type="range" min="0" max="100" value={Math.round(bgmVolume * 100)}
-                onChange={(event) => setBgmVolume(Number(event.target.value) / 100)} />
+                onChange={(event) => {
+                  setBgmVolume(Number(event.target.value) / 100);
+                  previewBgm();
+                }} />
               <output>{Math.round(bgmVolume * 100)}%</output>
             </label>
             <label className="audio-control">
               <span>효과음</span>
               <input type="range" min="0" max="100" value={Math.round(sfxVolume * 100)}
-                onChange={(event) => setSfxVolume(Number(event.target.value) / 100)} />
+                onChange={(event) => setSfxVolume(Number(event.target.value) / 100)}
+                onPointerUp={() => sfx.ui()}
+                onKeyUp={() => sfx.ui()} />
               <output>{Math.round(sfxVolume * 100)}%</output>
             </label>
           </div>

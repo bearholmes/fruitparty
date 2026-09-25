@@ -16,9 +16,7 @@ export function mergeFreq(level: number, combo: number): number {
 let ctx: AudioContext | null = null;
 let noiseBuf: AudioBuffer | null = null;
 
-function ac(): AudioContext | null {
-  const { soundOn, sfxVolume } = useGameStore.getState();
-  if (!soundOn || sfxVolume === 0) return null;
+export function ensureAudioContext(): AudioContext | null {
   try {
     if (!ctx) {
       const AC =
@@ -32,6 +30,12 @@ function ac(): AudioContext | null {
   } catch {
     return null;
   }
+}
+
+function ac(): AudioContext | null {
+  const { soundOn, sfxVolume } = useGameStore.getState();
+  if (!soundOn || sfxVolume === 0) return null;
+  return ensureAudioContext();
 }
 
 interface ToneOpts {
