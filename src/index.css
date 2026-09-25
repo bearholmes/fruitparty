@@ -495,26 +495,53 @@ button:focus-visible {
   gap: 6px;
 }
 .name-form {
-  margin: 12px 0;
-  text-align: left;
+  margin: 14px 0 0;
 }
 .name-form label {
   display: block;
-  margin-bottom: 7px;
+  margin-bottom: 9px;
   font-size: 14px;
   font-weight: 800;
 }
 .name-row {
   display: flex;
-  gap: 6px;
+  gap: 8px;
 }
 .name-row input {
   min-width: 0;
   flex: 1;
+  height: 44px;
   border: 1px solid var(--line);
   border-radius: 10px;
   padding: 0 10px;
   font: inherit;
+}
+.name-row .btn {
+  min-height: 44px;
+  margin-top: 0;
+}
+.game-over-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  margin-top: 18px;
+}
+.game-over-actions .btn {
+  width: 100%;
+  min-width: 0;
+  margin-top: 0;
+  white-space: nowrap;
+}
+.game-over-actions .btn:not(.big) {
+  padding: 0 6px;
+  gap: 5px;
+  font-size: clamp(12px, 3.5vw, 16px);
+}
+.game-over-actions .btn.big {
+  grid-column: 1 / -1;
+  width: 160px;
+  justify-self: center;
+  margin-bottom: 2px;
 }
 .leaderboard-error {
   margin: 10px 0;

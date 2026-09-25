@@ -211,7 +211,7 @@ export default function App() {
             )}
             {over && (
               <div className="overlay">
-                <div className="card">
+                <div className="card game-over-card">
                   <div className="card-icon">
                     <Frown size={48} />
                   </div>
@@ -253,17 +253,17 @@ export default function App() {
                       </button>
                     </div>
                   )}
-                  <button className="btn big" onClick={restart} disabled={pendingLeaderboard || leaderboardStatus !== 'ready'}>
-                    <RotateCcw size={20} /> 다시 하기 (R)
-                  </button>
-                  {!pendingLeaderboard && (
+                  <div className="game-over-actions">
+                    <button className="btn big" onClick={restart} disabled={pendingLeaderboard || leaderboardStatus !== 'ready'}>
+                      <RotateCcw size={20} /> 다시 하기 (R)
+                    </button>
                     <button className="btn" onClick={openLeaderboard}>
                       <Trophy size={18} /> 베스트 20 보기
                     </button>
-                  )}
-                  <button className="btn" onClick={downloadShot}>
-                    <Camera size={18} /> 기록 저장
-                  </button>
+                    <button className="btn" onClick={downloadShot}>
+                      <Camera size={18} /> 기록 저장
+                    </button>
+                  </div>
                 </div>
               </div>
             )}
