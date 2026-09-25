@@ -3,12 +3,14 @@
 export const BOARD_W = 480;
 export const BOARD_H = 660;
 export const WALL = 18;
-export const DEADLINE_Y = 132;
+export const DEADLINE_Y = 150;
 export const DROP_Y = 66;
 
-export const OVER_LIMIT_SEC = 3.0;
+export const OVER_LIMIT_SEC = 1.5;
+/** 과일 반발력 — 높을수록 쌓기가 불안정하고 합체가 어려워짐 */
+export const FRUIT_RESTITUTION = 0.35;
 export const DANGER_AFTER_SEC = 0.15;
-export const DROP_COOLDOWN_MS = 550;
+export const DROP_COOLDOWN_MS = 350;
 export const SHAKE_COOLDOWN_MS = 2000;
 export const DANGER_SHAKE_MAX = 5;
 export const DANGER_CLEAR_RESET_SEC = 2.0;

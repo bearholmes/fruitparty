@@ -20,6 +20,7 @@ import {
   EVO_TOAST_MIN_LEVEL,
   DANGER_SHAKE_MAX,
   DANGER_CLEAR_RESET_SEC,
+  FRUIT_RESTITUTION,
 } from './constants';
 
 /** 과일 식별용 커스텀 필드를 단 Matter 바디 */
@@ -231,7 +232,7 @@ export function useSuika() {
         }
         const nl = lv + 1;
         const body = Bodies.circle(mx, Math.min(my, BOARD_H - 120), FRUITS[nl].r, {
-          restitution: 0.25,
+          restitution: FRUIT_RESTITUTION,
           friction: 0.45,
           frictionAir: 0.008,
           density: 0.0012 + nl * 0.00025,
@@ -520,7 +521,7 @@ export function useSuika() {
     const gs = useGameStore.getState();
     if (!st || !st.engine || !st.canDrop || st.over || gs.paused || !gs.started) return;
     const body = Bodies.circle(st.dropX, DROP_Y, FRUITS[st.current].r, {
-      restitution: 0.2,
+      restitution: FRUIT_RESTITUTION,
       friction: 0.5,
       frictionAir: 0.008,
       density: 0.0012 + st.current * 0.00025,

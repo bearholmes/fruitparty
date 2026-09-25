@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { useGameStore } from './store';
+import { DANGER_SHAKE_MAX } from './constants';
 
 function freshState() {
   useGameStore.setState({
@@ -11,7 +12,7 @@ function freshState() {
     paused: false,
     started: true,
     danger: false,
-    dangerShakeLeft: 5,
+    dangerShakeLeft: DANGER_SHAKE_MAX,
     isRecord: false,
     leaderboard: [],
     pendingLeaderboard: false,
@@ -107,7 +108,7 @@ describe('store', () => {
       canShake: true,
       started: true,
       danger: false,
-      dangerShakeLeft: 5,
+      dangerShakeLeft: DANGER_SHAKE_MAX,
     });
   });
 
