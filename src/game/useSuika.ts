@@ -113,7 +113,7 @@ const COMBO_MILESTONES = new Set([3, 5, 8, 12, 20]);
 export function useSuika() {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const nextCanvasRef = useRef<HTMLCanvasElement | null>(null);
-  const sprites = useMemo(() => makeSprites(), []);
+  const sprites = useMemo(() => (typeof document === 'undefined' ? [] : makeSprites()), []);
 
   const g = useRef<MutableGame | null>(null);
   if (!g.current) g.current = createMutable();
@@ -124,7 +124,7 @@ export function useSuika() {
     if (!st) return;
     store.showToast(msg);
     st.toastTimer = clearTimer(st.toastTimer);
-    st.toastTimer = setTimeout(() => store.hideToast(), TOAST_MS);
+    st.toastTimer = window.setTimeout(() => store.hideToast(), TOAST_MS);
   }, []);
 
   const drawNext = useCallback(
@@ -450,6 +450,7 @@ export function useSuika() {
       else dropRef.current();
     };
     const onKey = (e: KeyboardEvent): void => {
+      if (e.target instanceof HTMLElement && e.target.closest('input, textarea, [contenteditable="true"]')) return;
       const step = 14;
       if (
         e.code === 'ArrowLeft' ||
@@ -534,7 +535,7 @@ export function useSuika() {
     drawNext(st.next);
     st.canDrop = false;
     st.dropTimer = clearTimer(st.dropTimer);
-    st.dropTimer = setTimeout(() => {
+    st.dropTimer = window.setTimeout(() => {
       st.canDrop = true;
     }, DROP_COOLDOWN_MS);
     sfx.drop();
@@ -570,7 +571,7 @@ export function useSuika() {
     }
     gs.setCanShake(false);
     st.shakeTimer = clearTimer(st.shakeTimer);
-    st.shakeTimer = setTimeout(() => useGameStore.getState().setCanShake(true), SHAKE_COOLDOWN_MS);
+    st.shakeTimer = window.setTimeout(() => useGameStore.getState().setCanShake(true), SHAKE_COOLDOWN_MS);
     const holder = canvasRef.current?.parentElement;
     if (holder) {
       holder.classList.remove('shake');
@@ -604,6 +605,8 @@ export function useSuika() {
   pauseRef.current = togglePause;
 
   const restart = useCallback(() => {
+    const game = useGameStore.getState();
+    if (game.over && (game.pendingLeaderboard || game.leaderboardStatus !== 'ready')) return;
     const st = g.current;
     if (!st) return;
     const eng = st.engine;

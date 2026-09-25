@@ -4,3 +4,10 @@ coverage/
 *.log
 .DS_Store
 .idea/
+.next/
+.vinext/
+.wrangler/
+.sites-runtime/
+next-env.d.ts
+tsconfig.tsbuildinfo
+site/

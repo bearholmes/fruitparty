@@ -1,3 +1,5 @@
+@import url('https://fonts.googleapis.com/css2?family=Jua&family=Pretendard:wght@400;600;800&family=Roboto:wght@400;800&display=swap');
+
 :root {
   --bg: #f6f5ec;
   --ink: #243c31;
@@ -80,6 +82,13 @@ button:focus-visible {
 }
 .score-box.best {
   background: #fff2dc;
+}
+.best-store {
+  border: 0;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
 }
 .score-box span,
 .next-pill {
@@ -423,6 +432,13 @@ button:focus-visible {
   box-shadow: 0 20px 50px rgba(12, 37, 23, 0.2);
   animation: pop 0.3s cubic-bezier(0.2, 1.4, 0.4, 1);
 }
+.intro-image {
+  display: block;
+  width: 160px;
+  height: 112px;
+  margin: 0 auto 8px;
+  object-fit: contain;
+}
 @keyframes pop {
   from {
     transform: scale(0.9) translateY(10px);
@@ -477,6 +493,101 @@ button:focus-visible {
   align-items: center;
   justify-content: center;
   gap: 6px;
+}
+.name-form {
+  margin: 12px 0;
+  text-align: left;
+}
+.name-form label {
+  display: block;
+  margin-bottom: 7px;
+  font-size: 14px;
+  font-weight: 800;
+}
+.name-row {
+  display: flex;
+  gap: 6px;
+}
+.name-row input {
+  min-width: 0;
+  flex: 1;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 0 10px;
+  font: inherit;
+}
+.leaderboard-error {
+  margin: 10px 0;
+  color: var(--danger);
+  font-size: 14px;
+}
+.leaderboard-error .btn {
+  display: flex;
+  margin: 8px auto;
+}
+.leaderboard-layer {
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+  display: grid;
+  place-items: center;
+  padding: 16px;
+  background: rgba(24, 54, 39, 0.62);
+}
+.leaderboard-card {
+  width: min(440px, 100%);
+  max-height: min(680px, 90dvh);
+  display: flex;
+  flex-direction: column;
+  border-radius: 22px;
+  padding: 18px;
+  background: #fffef9;
+  box-shadow: 0 20px 50px rgba(12, 37, 23, 0.2);
+}
+.leaderboard-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+.leaderboard-head h2 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  font: 24px/1.2 'Jua', sans-serif;
+}
+.leaderboard-head .btn {
+  width: 38px;
+  min-height: 38px;
+  padding: 0;
+}
+.leaderboard-list {
+  overflow-y: auto;
+}
+.leaderboard-row {
+  display: grid;
+  grid-template-columns: 42px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+  min-height: 38px;
+  padding: 4px 8px;
+  border-bottom: 1px solid var(--line);
+  font-size: 14px;
+}
+.leaderboard-row:nth-child(-n + 3) {
+  background: #fff2dc;
+  font-weight: 800;
+}
+.leaderboard-rank {
+  color: var(--green);
+  font-weight: 800;
+}
+.leaderboard-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 .toast {
   position: absolute;

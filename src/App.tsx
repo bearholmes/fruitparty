@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   Camera,
-  BookOpen,
+  Settings,
   ChevronLeft,
   ChevronRight,
   Frown,
@@ -19,7 +19,10 @@ import { useSuika } from './game/useSuika';
 
 export default function App() {
   const [mobilePanelOpen, setMobilePanelOpen] = useState(false);
+  const [leaderboardOpen, setLeaderboardOpen] = useState(false);
+  const [playerName, setPlayerName] = useState('');
   const pausedByMenu = useRef(false);
+  const pausedByLeaderboard = useRef(false);
   const {
     canvasRef,
     nextCanvasRef,
@@ -38,6 +41,12 @@ export default function App() {
   const started = useGameStore((s) => s.started);
   const paused = useGameStore((s) => s.paused);
   const isRecord = useGameStore((s) => s.isRecord);
+  const leaderboard = useGameStore((s) => s.leaderboard);
+  const pendingLeaderboard = useGameStore((s) => s.pendingLeaderboard);
+  const leaderboardStatus = useGameStore((s) => s.leaderboardStatus);
+  const leaderboardError = useGameStore((s) => s.leaderboardError);
+  const refreshLeaderboard = useGameStore((s) => s.refreshLeaderboard);
+  const saveLeaderboardScore = useGameStore((s) => s.saveLeaderboardScore);
   const toast = useGameStore((s) => s.toast);
   const evoUrls = useGameStore((s) => s.evoUrls);
   const soundOn = useGameStore((s) => s.soundOn);
@@ -61,6 +70,34 @@ export default function App() {
     if (pausedByMenu.current && game.paused && !game.over) game.setPaused(false);
     pausedByMenu.current = false;
   }, []);
+
+  const openLeaderboard = useCallback(() => {
+    const game = useGameStore.getState();
+    pausedByLeaderboard.current = game.started && !game.paused && !game.over;
+    if (pausedByLeaderboard.current) game.setPaused(true);
+    setLeaderboardOpen(true);
+    void game.refreshLeaderboard();
+  }, []);
+
+  const closeLeaderboard = useCallback(() => {
+    setLeaderboardOpen(false);
+    const game = useGameStore.getState();
+    if (pausedByLeaderboard.current && game.paused && !game.over) game.setPaused(false);
+    pausedByLeaderboard.current = false;
+  }, []);
+
+  const submitName = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (!playerName.trim()) return;
+    if (await saveLeaderboardScore(playerName)) {
+      setPlayerName('');
+      openLeaderboard();
+    }
+  };
+
+  useEffect(() => {
+    void refreshLeaderboard();
+  }, [over, refreshLeaderboard]);
 
   const downloadShot = useCallback(() => {
     const canvas = canvasRef.current;
@@ -98,6 +135,16 @@ export default function App() {
     return () => window.removeEventListener('keydown', closeOnEscape, true);
   }, [mobilePanelOpen, closePanel]);
 
+  useEffect(() => {
+    if (!leaderboardOpen) return;
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') closeLeaderboard();
+      event.stopImmediatePropagation();
+    };
+    window.addEventListener('keydown', onKey, true);
+    return () => window.removeEventListener('keydown', onKey, true);
+  }, [leaderboardOpen, closeLeaderboard]);
+
   return (
     <>
       <main className="layout">
@@ -108,10 +155,10 @@ export default function App() {
                 <span>SCORE</span>
                 <strong>{score}</strong>
               </div>
-              <div className="score-box best">
+              <button className="score-box best best-store" onClick={openLeaderboard} aria-label="베스트 스토어 순위표 열기">
                 <span>BEST</span>
                 <strong>{best}</strong>
-              </div>
+              </button>
             </div>
             <div
               className={combo >= 5 ? 'combo hot' : 'combo'}
@@ -140,7 +187,7 @@ export default function App() {
                 aria-controls="mobile-panel"
                 aria-expanded={mobilePanelOpen}
               >
-                <BookOpen size={19} />
+                <Settings size={19} />
               </button>
             </div>
           </div>
@@ -148,10 +195,12 @@ export default function App() {
             <canvas id="game" ref={canvasRef} width="480" height="660"></canvas>
             {!started && (
               <div className="overlay">
-                <div className="card">
-                  <div className="card-icon">
-                    <img src="/fruits/fruit-09.webp" alt="" />
-                  </div>
+                <div className="card start-card">
+                  <img
+                    className="intro-image"
+                    src="/intro-fruit-basket.webp"
+                    alt="과일이 담긴 전통 바구니"
+                  />
                   <h2>과실 잔치</h2>
                   <div className="start-how">← → 이동 · 클릭 / Space 낙하 · ↑↓ 흔들기</div>
                   <button className="btn big" onClick={start}>
@@ -176,9 +225,42 @@ export default function App() {
                       <Trophy size={18} /> 최고기록!
                     </div>
                   )}
-                  <button className="btn big" onClick={restart}>
+                  {pendingLeaderboard && (
+                    <form className="name-form" onSubmit={submitName}>
+                      <label htmlFor="player-name">베스트 20 진입! 이름을 남겨주세요</label>
+                      <div className="name-row">
+                        <input
+                          id="player-name"
+                          autoFocus
+                          value={playerName}
+                          onChange={(event) => setPlayerName(Array.from(event.target.value).slice(0, 5).join(''))}
+                          maxLength={5}
+                          placeholder="이름 (5자 이내)"
+                          aria-label="순위표에 표시할 이름"
+                        />
+                        <button className="btn" type="submit" disabled={!playerName.trim()}>
+                          등록
+                        </button>
+                      </div>
+                    </form>
+                  )}
+                  {leaderboardStatus === 'loading' && <p>순위를 확인하고 있어요…</p>}
+                  {leaderboardError && (
+                    <div className="leaderboard-error" role="alert">
+                      {leaderboardError}
+                      <button className="btn" onClick={() => void refreshLeaderboard()}>
+                        다시 시도
+                      </button>
+                    </div>
+                  )}
+                  <button className="btn big" onClick={restart} disabled={pendingLeaderboard || leaderboardStatus !== 'ready'}>
                     <RotateCcw size={20} /> 다시 하기 (R)
                   </button>
+                  {!pendingLeaderboard && (
+                    <button className="btn" onClick={openLeaderboard}>
+                      <Trophy size={18} /> 베스트 20 보기
+                    </button>
+                  )}
                   <button className="btn" onClick={downloadShot}>
                     <Camera size={18} /> 기록 저장
                   </button>
@@ -236,7 +318,7 @@ export default function App() {
             <button className="btn sm" onClick={toggleSound}>
               {soundOn ? <Volume2 size={15} /> : <VolumeX size={15} />} 사운드
             </button>
-            <button className="btn sm" onClick={restart}>
+            <button className="btn sm" onClick={restart} disabled={over && (pendingLeaderboard || leaderboardStatus !== 'ready')}>
               <RotateCcw size={15} /> 다시 시작
             </button>
           </div>
@@ -282,6 +364,38 @@ export default function App() {
             </ol>
           </div>
         </aside>
+        {leaderboardOpen && (
+          <div className="leaderboard-layer" onClick={closeLeaderboard}>
+            <section
+              className="leaderboard-card"
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="leaderboard-title"
+              onClick={(event) => event.stopPropagation()}
+            >
+              <div className="leaderboard-head">
+                <h2 id="leaderboard-title"><Trophy size={24} /> 베스트 스토어 TOP 20</h2>
+                <button className="btn" onClick={closeLeaderboard} aria-label="순위표 닫기"><X size={20} /></button>
+              </div>
+              <div className="leaderboard-list">
+                {leaderboardStatus === 'loading' && <p>순위표를 불러오는 중…</p>}
+                {leaderboardStatus === 'error' && (
+                  <div className="leaderboard-error" role="alert">
+                    {leaderboardError}
+                    <button className="btn" onClick={() => void refreshLeaderboard()}>다시 시도</button>
+                  </div>
+                )}
+                {leaderboardStatus === 'ready' && Array.from({ length: 20 }, (_, index) => (
+                  <div className="leaderboard-row" key={index}>
+                    <span className="leaderboard-rank">{index + 1}</span>
+                    <span className="leaderboard-name">{leaderboard[index]?.name ?? '—'}</span>
+                    <strong>{leaderboard[index]?.score.toLocaleString() ?? '—'}</strong>
+                  </div>
+                ))}
+              </div>
+            </section>
+          </div>
+        )}
       </main>
     </>
   );

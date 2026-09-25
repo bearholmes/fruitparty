@@ -13,22 +13,16 @@ function freshState() {
     danger: false,
     dangerShakeLeft: 5,
     isRecord: false,
+    leaderboard: [],
+    pendingLeaderboard: false,
+    submittedLeaderboard: false,
+    leaderboardStatus: 'idle',
+    leaderboardError: null,
     toast: null,
     evoUrls: [],
     soundOn: true,
     canShake: true,
   });
-}
-
-function stubLocalStorage() {
-  const data = new Map<string, string>();
-  vi.stubGlobal('localStorage', {
-    getItem: (k: string) => data.get(k) ?? null,
-    setItem: (k: string, v: string) => void data.set(k, v),
-    removeItem: (k: string) => void data.delete(k),
-    clear: () => data.clear(),
-  });
-  return data;
 }
 
 describe('store', () => {
@@ -44,17 +38,34 @@ describe('store', () => {
     expect(useGameStore.getState().score).toBe(16);
   });
 
-  it('최고기록 경신 시 best를 갱신하고 localStorage에 저장한다', () => {
-    const ls = stubLocalStorage();
+  it('최고기록 경신 시 best를 갱신한다', () => {
     useGameStore.getState().addScore(100);
     expect(useGameStore.getState().best).toBe(100);
-    expect(ls.get('fruitparty-best')).toBe('100');
   });
 
-  it('localStorage가 없어도 addScore는 동작한다', () => {
-    useGameStore.getState().addScore(50);
-    expect(useGameStore.getState().score).toBe(50);
-    expect(useGameStore.getState().best).toBe(50);
+  it('DB 순위표를 읽고 게임오버 점수의 등록 자격을 판정한다', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(Response.json({ entries: [{ name: '철수', score: 100 }] })));
+    useGameStore.setState({ over: true, score: 50 });
+    await useGameStore.getState().refreshLeaderboard();
+    expect(useGameStore.getState()).toMatchObject({
+      leaderboard: [{ name: '철수', score: 100 }],
+      best: 100,
+      pendingLeaderboard: true,
+      leaderboardStatus: 'ready',
+    });
+  });
+
+  it('이름과 점수를 DB에 제출하고 중복 등록을 막는다', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(Response.json({ entries: [{ name: '영희', score: 50 }] }));
+    vi.stubGlobal('fetch', fetchMock);
+    useGameStore.setState({ over: true, score: 50, pendingLeaderboard: true });
+    expect(await useGameStore.getState().saveLeaderboardScore('영희')).toBe(true);
+    expect(fetchMock).toHaveBeenCalledWith('/api/leaderboard', expect.objectContaining({ method: 'POST' }));
+    expect(useGameStore.getState()).toMatchObject({
+      leaderboard: [{ name: '영희', score: 50 }],
+      pendingLeaderboard: false,
+      submittedLeaderboard: true,
+    });
   });
 
   it('gameOver는 over를 세우고 기록 여부를 판정한다', () => {

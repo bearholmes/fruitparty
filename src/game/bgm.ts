@@ -18,7 +18,7 @@ function setBgm(a: HTMLAudioElement | null): void {
   (globalThis as unknown as Record<string, HTMLAudioElement | null>)[BGM_KEY] = a;
 }
 
-let fadeTimer: number | null = null;
+let fadeTimer: ReturnType<typeof setInterval> | null = null;
 
 export function ensureBgm(): HTMLAudioElement | null {
   const existing = getBgm();
