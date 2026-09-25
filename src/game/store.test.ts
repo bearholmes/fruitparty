@@ -24,7 +24,7 @@ function freshState() {
     toast: null,
     evoUrls: [],
     soundOn: true,
-    bgmVolume: 1,
+    bgmVolume: 0.5,
     sfxVolume: 1,
     canShake: true,
   });
@@ -34,6 +34,10 @@ describe('store', () => {
   beforeEach(() => {
     vi.unstubAllGlobals();
     freshState();
+  });
+
+  it('배경음악 기본 음량은 50%다', () => {
+    expect(useGameStore.getInitialState().bgmVolume).toBe(0.5);
   });
 
   it('addScore는 점수를 누적하고 반올림한다', () => {

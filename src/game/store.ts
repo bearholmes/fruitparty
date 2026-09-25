@@ -94,7 +94,7 @@ export const useGameStore = create<GameState>()((set, get) => ({
   toast: null,
   evoUrls: [],
   soundOn: true,
-  bgmVolume: 1,
+  bgmVolume: 0.5,
   sfxVolume: 1,
   canShake: true,
 
