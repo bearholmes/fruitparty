@@ -27,6 +27,8 @@ export interface GameState {
   leaderboard: LeaderboardEntry[];
   pendingLeaderboard: boolean;
   submittedLeaderboard: boolean;
+  submittingLeaderboard: boolean;
+  submissionId: string | null;
   leaderboardStatus: 'idle' | 'loading' | 'ready' | 'error';
   leaderboardError: string | null;
   toast: Toast | null;
@@ -66,6 +68,8 @@ export const useGameStore = create<GameState>()((set, get) => ({
   leaderboard: [],
   pendingLeaderboard: false,
   submittedLeaderboard: false,
+  submittingLeaderboard: false,
+  submissionId: null,
   leaderboardStatus: 'idle',
   leaderboardError: null,
   toast: null,
@@ -82,6 +86,7 @@ export const useGameStore = create<GameState>()((set, get) => ({
   setCombo: (combo) => set({ combo }),
   setNextLv: (nextLv) => set({ nextLv }),
   gameOver: () => {
+    if (get().over) return;
     const { score, best } = get();
     set({
       over: true,
@@ -89,6 +94,8 @@ export const useGameStore = create<GameState>()((set, get) => ({
       isRecord: score > 0 && score >= best,
       pendingLeaderboard: false,
       submittedLeaderboard: false,
+      submittingLeaderboard: false,
+      submissionId: crypto.randomUUID(),
     });
   },
   refreshLeaderboard: async () => {
@@ -108,19 +115,21 @@ export const useGameStore = create<GameState>()((set, get) => ({
     }
   },
   saveLeaderboardScore: async (name) => {
-    const { over, pendingLeaderboard, score } = get();
-    if (!over || !pendingLeaderboard || !name.trim()) return false;
+    const { over, pendingLeaderboard, submittedLeaderboard, submittingLeaderboard, score, submissionId } = get();
+    if (!over || !pendingLeaderboard || submittedLeaderboard || submittingLeaderboard || !submissionId || !name.trim()) return false;
+    set({ submittingLeaderboard: true, leaderboardError: null });
     try {
-      const leaderboard = await submitLeaderboardScore(name.trim(), score);
+      const leaderboard = await submitLeaderboardScore(name.trim(), score, submissionId);
       set({
         leaderboard,
         pendingLeaderboard: false,
         submittedLeaderboard: true,
+        submittingLeaderboard: false,
         leaderboardError: null,
       });
       return true;
     } catch (error) {
-      set({ leaderboardError: (error as Error).message });
+      set({ submittingLeaderboard: false, leaderboardError: (error as Error).message });
       return false;
     }
   },
@@ -145,6 +154,8 @@ export const useGameStore = create<GameState>()((set, get) => ({
       isRecord: false,
       pendingLeaderboard: false,
       submittedLeaderboard: false,
+      submittingLeaderboard: false,
+      submissionId: null,
       toast: null,
       nextLv,
       canShake: true,

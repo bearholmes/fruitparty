@@ -17,6 +17,8 @@ function freshState() {
     leaderboard: [],
     pendingLeaderboard: false,
     submittedLeaderboard: false,
+    submittingLeaderboard: false,
+    submissionId: null,
     leaderboardStatus: 'idle',
     leaderboardError: null,
     toast: null,
@@ -59,14 +61,59 @@ describe('store', () => {
   it('이름과 점수를 DB에 제출하고 중복 등록을 막는다', async () => {
     const fetchMock = vi.fn().mockResolvedValue(Response.json({ entries: [{ name: '영희', score: 50 }] }));
     vi.stubGlobal('fetch', fetchMock);
-    useGameStore.setState({ over: true, score: 50, pendingLeaderboard: true });
+    const submissionId = '11111111-1111-4111-8111-111111111111';
+    useGameStore.setState({ over: true, score: 50, pendingLeaderboard: true, submissionId });
     expect(await useGameStore.getState().saveLeaderboardScore('영희')).toBe(true);
     expect(fetchMock).toHaveBeenCalledWith('/api/leaderboard', expect.objectContaining({ method: 'POST' }));
+    expect(JSON.parse(fetchMock.mock.calls[0][1].body)).toEqual({ name: '영희', score: 50, submissionId });
     expect(useGameStore.getState()).toMatchObject({
       leaderboard: [{ name: '영희', score: 50 }],
       pendingLeaderboard: false,
       submittedLeaderboard: true,
+      submittingLeaderboard: false,
     });
+  });
+
+  it('등록 버튼을 연타해도 요청을 한 번만 보낸다', async () => {
+    let resolveRequest!: (response: Response) => void;
+    const fetchMock = vi.fn().mockImplementation(() => new Promise<Response>((resolve) => {
+      resolveRequest = resolve;
+    }));
+    vi.stubGlobal('fetch', fetchMock);
+    useGameStore.setState({
+      over: true,
+      score: 50,
+      pendingLeaderboard: true,
+      submissionId: '22222222-2222-4222-8222-222222222222',
+    });
+
+    const first = useGameStore.getState().saveLeaderboardScore('영희');
+    const second = useGameStore.getState().saveLeaderboardScore('영희');
+    expect(useGameStore.getState().submittingLeaderboard).toBe(true);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(await second).toBe(false);
+
+    resolveRequest(Response.json({ entries: [{ name: '영희', score: 50 }] }));
+    expect(await first).toBe(true);
+    expect(await useGameStore.getState().saveLeaderboardScore('영희')).toBe(false);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('저장 실패 후 재시도에도 같은 제출 번호를 쓴다', async () => {
+    const fetchMock = vi.fn()
+      .mockRejectedValueOnce(new Error('network'))
+      .mockResolvedValueOnce(Response.json({ entries: [{ name: '영희', score: 50 }] }));
+    vi.stubGlobal('fetch', fetchMock);
+    const submissionId = '33333333-3333-4333-8333-333333333333';
+    useGameStore.setState({ over: true, score: 50, pendingLeaderboard: true, submissionId });
+
+    expect(await useGameStore.getState().saveLeaderboardScore('영희')).toBe(false);
+    expect(useGameStore.getState().submittingLeaderboard).toBe(false);
+    expect(await useGameStore.getState().saveLeaderboardScore('영희')).toBe(true);
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    for (const [, options] of fetchMock.mock.calls) {
+      expect(JSON.parse(options.body).submissionId).toBe(submissionId);
+    }
   });
 
   it('gameOver는 over를 세우고 기록 여부를 판정한다', () => {

@@ -43,6 +43,7 @@ export default function App() {
   const isRecord = useGameStore((s) => s.isRecord);
   const leaderboard = useGameStore((s) => s.leaderboard);
   const pendingLeaderboard = useGameStore((s) => s.pendingLeaderboard);
+  const submittingLeaderboard = useGameStore((s) => s.submittingLeaderboard);
   const leaderboardStatus = useGameStore((s) => s.leaderboardStatus);
   const leaderboardError = useGameStore((s) => s.leaderboardError);
   const refreshLeaderboard = useGameStore((s) => s.refreshLeaderboard);
@@ -238,7 +239,7 @@ export default function App() {
                           placeholder="이름 (5자 이내)"
                           aria-label="순위표에 표시할 이름"
                         />
-                        <button className="btn" type="submit" disabled={!playerName.trim()}>
+                        <button className="btn" type="submit" disabled={!playerName.trim() || submittingLeaderboard}>
                           등록
                         </button>
                       </div>

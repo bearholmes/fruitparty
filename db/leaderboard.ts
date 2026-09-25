@@ -17,17 +17,21 @@ export async function top20(): Promise<LeaderboardEntry[]> {
   return result.results;
 }
 
-export async function addScore(name: string, score: number): Promise<LeaderboardEntry[] | null> {
+export async function addScore(name: string, score: number, submissionId: string): Promise<LeaderboardEntry[] | null> {
   const db = database();
   const result = await db
-    .prepare(`INSERT INTO leaderboard (name, score)
-      SELECT ?, ?
+    .prepare(`INSERT INTO leaderboard (name, score, submission_id)
+      SELECT ?, ?, ?
       WHERE (SELECT COUNT(*) FROM leaderboard) < 20
          OR ? > (SELECT MIN(score) FROM
-           (SELECT score FROM leaderboard ORDER BY score DESC, id ASC LIMIT 20))`)
-    .bind(name, score, score)
+           (SELECT score FROM leaderboard ORDER BY score DESC, id ASC LIMIT 20))
+      ON CONFLICT(submission_id) DO NOTHING`)
+    .bind(name, score, submissionId, score)
     .run();
-  if (!result.meta.changes) return null;
+  if (!result.meta.changes) {
+    const duplicate = await db.prepare('SELECT id FROM leaderboard WHERE submission_id = ?').bind(submissionId).first();
+    return duplicate ? top20() : null;
+  }
   await db
     .prepare(`DELETE FROM leaderboard WHERE id NOT IN
       (SELECT id FROM leaderboard ORDER BY score DESC, id ASC LIMIT 20)`)
