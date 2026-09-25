@@ -144,12 +144,16 @@ export function useSuika() {
 
   useEffect(() => {
     let active = true;
-    loadSprites(sprites).then(() => {
-      if (!active) return;
-      useGameStore.getState().setEvoUrls(sprites.map((s) => s.cv.toDataURL()));
-      drawNext(g.current?.next ?? 0);
-    }).catch((error: unknown) => console.error(error));
-    return () => { active = false; };
+    loadSprites(sprites)
+      .then(() => {
+        if (!active) return;
+        useGameStore.getState().setEvoUrls(sprites.map((s) => s.cv.toDataURL()));
+        drawNext(g.current?.next ?? 0);
+      })
+      .catch((error: unknown) => console.error(error));
+    return () => {
+      active = false;
+    };
   }, [sprites, drawNext]);
 
   /* ---- 메인 이펙트: 엔진 생성 → 루프 → 클린업 ---- */
@@ -207,7 +211,14 @@ export function useSuika() {
         st.overTime.delete(b.id);
         if (lv === MAX_LEVEL) {
           store().addScore(FINAL_BONUS);
-          st.mergeAnim.push({ x: mx, y: my, t: 0, text: `+${FINAL_BONUS}`, size: 30, color: '#e63946' });
+          st.mergeAnim.push({
+            x: mx,
+            y: my,
+            t: 0,
+            text: `+${FINAL_BONUS}`,
+            size: 30,
+            color: '#e63946',
+          });
           pop(mx, my, lv);
           showToast(`💥 단감 폭발! +${FINAL_BONUS}`);
           st.combo++;
@@ -444,8 +455,7 @@ export function useSuika() {
         e.code === 'Space'
       )
         e.preventDefault();
-      if (e.code === 'ArrowLeft')
-        st.dropX = Math.max(WALL + FRUITS[st.current].r, st.dropX - step);
+      if (e.code === 'ArrowLeft') st.dropX = Math.max(WALL + FRUITS[st.current].r, st.dropX - step);
       if (e.code === 'ArrowRight')
         st.dropX = Math.min(BOARD_W - WALL - FRUITS[st.current].r, st.dropX + step);
       if (e.code === 'Space' || e.key === 'Enter') {
@@ -454,8 +464,7 @@ export function useSuika() {
         else dropRef.current();
       }
       if (e.key === 'r' || e.key === 'R') restartRef.current();
-      if (e.code === 'ArrowUp' || e.code === 'ArrowDown' || e.code === 'KeyS')
-        shakeRef.current();
+      if (e.code === 'ArrowUp' || e.code === 'ArrowDown' || e.code === 'KeyS') shakeRef.current();
       if (e.code === 'KeyP' || e.code === 'Escape') pauseRef.current();
     };
     const onVis = (): void => {
@@ -492,7 +501,7 @@ export function useSuika() {
       st.shakeTimer = clearTimer(st.shakeTimer);
       st.engine = null;
     };
-  }, [drawNext, showToast]);
+  }, [drawNext, showToast, sprites]);
 
   const drop = useCallback(() => {
     const st = g.current;
@@ -549,10 +558,7 @@ export function useSuika() {
     }
     gs.setCanShake(false);
     st.shakeTimer = clearTimer(st.shakeTimer);
-    st.shakeTimer = setTimeout(
-      () => useGameStore.getState().setCanShake(true),
-      SHAKE_COOLDOWN_MS,
-    );
+    st.shakeTimer = setTimeout(() => useGameStore.getState().setCanShake(true), SHAKE_COOLDOWN_MS);
     const holder = canvasRef.current?.parentElement;
     if (holder) {
       holder.classList.remove('shake');
@@ -626,5 +632,15 @@ export function useSuika() {
     st.dropX = Math.min(BOARD_W - WALL - 20, st.dropX + 24);
   }, []);
 
-  return { canvasRef, nextCanvasRef, drop, restart, shake, start, togglePause, moveLeft, moveRight };
+  return {
+    canvasRef,
+    nextCanvasRef,
+    drop,
+    restart,
+    shake,
+    start,
+    togglePause,
+    moveLeft,
+    moveRight,
+  };
 }

@@ -22,8 +22,17 @@ import { useSuika } from './game/useSuika';
 export default function App() {
   const [mobilePanelOpen, setMobilePanelOpen] = useState(false);
   const pausedByMenu = useRef(false);
-  const { canvasRef, nextCanvasRef, drop, restart, shake, start, togglePause, moveLeft, moveRight } =
-    useSuika();
+  const {
+    canvasRef,
+    nextCanvasRef,
+    drop,
+    restart,
+    shake,
+    start,
+    togglePause,
+    moveLeft,
+    moveRight,
+  } = useSuika();
   const score = useGameStore((s) => s.score);
   const best = useGameStore((s) => s.best);
   const combo = useGameStore((s) => s.combo);
@@ -58,7 +67,9 @@ export default function App() {
   const downloadShot = useCallback(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
-    const W = canvas.width, H = canvas.height, PAD = 84;
+    const W = canvas.width,
+      H = canvas.height,
+      PAD = 84;
     const out = document.createElement('canvas');
     out.width = W;
     out.height = H + PAD;
@@ -104,17 +115,33 @@ export default function App() {
                 <strong>{best}</strong>
               </div>
             </div>
-            <div className={combo >= 5 ? 'combo hot' : 'combo'} key={combo} aria-label={`콤보 ${combo}`}>
-              <span>COMBO</span><strong>×{combo}</strong>
+            <div
+              className={combo >= 5 ? 'combo hot' : 'combo'}
+              key={combo}
+              aria-label={`콤보 ${combo}`}
+            >
+              <span>COMBO</span>
+              <strong>×{combo}</strong>
             </div>
             <div className="next-pill">
               NEXT <canvas id="nextCanvas" ref={nextCanvasRef} width="96" height="96"></canvas>
             </div>
             <div className="head-actions">
-              <button className="btn pause-control" onClick={togglePause} disabled={over || !started} aria-label={paused ? '게임 계속하기' : '게임 일시정지'}>
+              <button
+                className="btn pause-control"
+                onClick={togglePause}
+                disabled={over || !started}
+                aria-label={paused ? '게임 계속하기' : '게임 일시정지'}
+              >
                 {paused ? <Play size={18} /> : <Pause size={18} />}
               </button>
-              <button className="btn mobile-info" onClick={openPanel} aria-label="도감과 메뉴 열기" aria-controls="mobile-panel" aria-expanded={mobilePanelOpen}>
+              <button
+                className="btn mobile-info"
+                onClick={openPanel}
+                aria-label="도감과 메뉴 열기"
+                aria-controls="mobile-panel"
+                aria-expanded={mobilePanelOpen}
+              >
                 <BookOpen size={19} />
               </button>
             </div>
@@ -167,9 +194,8 @@ export default function App() {
                     <Pause size={48} />
                   </div>
                   <h2>일시정지</h2>
-                  <p>쉬는 중이에요</p>
                   <button className="btn big" onClick={togglePause}>
-                    <Play size={20} /> 계속하기 (P)
+                    <Play size={20} /> 계속하기
                   </button>
                 </div>
               </div>
@@ -204,7 +230,9 @@ export default function App() {
         {mobilePanelOpen && <div className="mobile-backdrop" onClick={closePanel} />}
         <aside id="mobile-panel" className={`side${mobilePanelOpen ? ' open' : ''}`}>
           <div className="mobile-layer-head">
-            <button className="btn" onClick={closePanel} aria-label="메뉴 닫기"><X size={20} /></button>
+            <button className="btn" onClick={closePanel} aria-label="메뉴 닫기">
+              <X size={20} />
+            </button>
           </div>
           <div className="sysbar">
             <button className="btn sm" onClick={toggleSound}>

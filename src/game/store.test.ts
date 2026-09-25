@@ -73,7 +73,16 @@ describe('store', () => {
   });
 
   it('reset은 진행 상태를 초기화하고 다음 과일을 세팅한다', () => {
-    useGameStore.setState({ score: 99, over: true, paused: true, started: false, combo: 5, canShake: false, danger: true, dangerShakeLeft: 0 });
+    useGameStore.setState({
+      score: 99,
+      over: true,
+      paused: true,
+      started: false,
+      combo: 5,
+      canShake: false,
+      danger: true,
+      dangerShakeLeft: 0,
+    });
     useGameStore.getState().reset(3);
     const s = useGameStore.getState();
     expect(s).toMatchObject({
