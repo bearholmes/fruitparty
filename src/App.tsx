@@ -1,11 +1,10 @@
-import { useCallback, useEffect } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   ArrowDownToLine,
   Camera,
-  Cherry,
+  BookOpen,
   ChevronLeft,
   ChevronRight,
-  Flame,
   Frown,
   Pause,
   Play,
@@ -14,12 +13,15 @@ import {
   Vibrate,
   Volume2,
   VolumeX,
+  X,
 } from 'lucide-react';
 import { FRUITS } from './game/art';
 import { useGameStore } from './game/store';
 import { useSuika } from './game/useSuika';
 
 export default function App() {
+  const [mobilePanelOpen, setMobilePanelOpen] = useState(false);
+  const pausedByMenu = useRef(false);
   const { canvasRef, nextCanvasRef, drop, restart, shake, start, togglePause, moveLeft, moveRight } =
     useSuika();
   const score = useGameStore((s) => s.score);
@@ -38,6 +40,20 @@ export default function App() {
   const dangerShakeLeft = useGameStore((s) => s.dangerShakeLeft);
 
   const busy = over || paused || !started;
+
+  const openPanel = useCallback(() => {
+    const game = useGameStore.getState();
+    pausedByMenu.current = game.started && !game.paused && !game.over;
+    if (pausedByMenu.current) game.setPaused(true);
+    setMobilePanelOpen(true);
+  }, []);
+
+  const closePanel = useCallback(() => {
+    setMobilePanelOpen(false);
+    const game = useGameStore.getState();
+    if (pausedByMenu.current && game.paused && !game.over) game.setPaused(false);
+    pausedByMenu.current = false;
+  }, []);
 
   const downloadShot = useCallback(() => {
     const canvas = canvasRef.current;
@@ -61,37 +77,20 @@ export default function App() {
     a.click();
   }, [canvasRef, score, best]);
 
-  /* 데스크톱 2열 레이아웃에서 캔버스를 뷰포트 높이에 정확히 맞춤.
-     크롬(헤드·컨트롤·여백) 실측 기반이라 매직넘버 불일치가 없음. */
   useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const holder = canvas.parentElement;
-    const wrap = holder?.parentElement;
-    if (!holder || !wrap) return;
-    const fit = (): void => {
-      if (window.innerWidth < 861) {
-        holder.style.removeProperty('--cw');
-        return;
-      }
-      const chrome = wrap.offsetHeight - holder.offsetHeight;
-      const top = wrap.getBoundingClientRect().top;
-      const availH = window.innerHeight - top - chrome - 18; // 끝자리 반올림 스크롤 방지 2px 여유
-      const w = Math.max(360, Math.min(480, Math.floor(availH * (480 / 660))));
-      holder.style.setProperty('--cw', `${w}px`);
+    if (!mobilePanelOpen) return;
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key !== 'Escape') return;
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      closePanel();
     };
-    fit();
-    window.addEventListener('resize', fit);
-    document.fonts?.ready.then(fit).catch(() => {});
-    return () => window.removeEventListener('resize', fit);
-  }, [canvasRef]);
+    window.addEventListener('keydown', closeOnEscape, true);
+    return () => window.removeEventListener('keydown', closeOnEscape, true);
+  }, [mobilePanelOpen, closePanel]);
 
   return (
     <>
-      <div className="bg-fruits" aria-hidden="true">
-        🍒🍋🫐🍑🍊🍎🍐🍇🍈🟠
-      </div>
-
       <main className="layout">
         <section className="board-wrap">
           <div className="board-head">
@@ -105,8 +104,19 @@ export default function App() {
                 <strong>{best}</strong>
               </div>
             </div>
+            <div className={combo >= 5 ? 'combo hot' : 'combo'} key={combo} aria-label={`콤보 ${combo}`}>
+              <span>COMBO</span><strong>×{combo}</strong>
+            </div>
             <div className="next-pill">
               NEXT <canvas id="nextCanvas" ref={nextCanvasRef} width="96" height="96"></canvas>
+            </div>
+            <div className="head-actions">
+              <button className="btn pause-control" onClick={togglePause} disabled={over || !started} aria-label={paused ? '게임 계속하기' : '게임 일시정지'}>
+                {paused ? <Play size={18} /> : <Pause size={18} />}
+              </button>
+              <button className="btn mobile-info" onClick={openPanel} aria-label="도감과 메뉴 열기" aria-controls="mobile-panel" aria-expanded={mobilePanelOpen}>
+                <BookOpen size={19} />
+              </button>
             </div>
           </div>
           <div className="canvas-holder">
@@ -115,7 +125,7 @@ export default function App() {
               <div className="overlay">
                 <div className="card">
                   <div className="card-icon">
-                    <Cherry size={48} />
+                    <img src="/fruits/fruit-09.webp" alt="" />
                   </div>
                   <h2>후르츠파티</h2>
                   <div className="start-how">← → 이동 · 클릭 / Space 낙하 · ↑↓ 흔들기</div>
@@ -191,11 +201,12 @@ export default function App() {
           </div>
         </section>
 
-        <aside className="side">
+        {mobilePanelOpen && <div className="mobile-backdrop" onClick={closePanel} />}
+        <aside id="mobile-panel" className={`side${mobilePanelOpen ? ' open' : ''}`}>
+          <div className="mobile-layer-head">
+            <button className="btn" onClick={closePanel} aria-label="메뉴 닫기"><X size={20} /></button>
+          </div>
           <div className="sysbar">
-            <button className="btn sm" onClick={togglePause} disabled={over || !started}>
-              {paused ? <Play size={15} /> : <Pause size={15} />} 일시정지
-            </button>
             <button className="btn sm" onClick={toggleSound}>
               {soundOn ? <Volume2 size={15} /> : <VolumeX size={15} />} 사운드
             </button>
@@ -243,12 +254,6 @@ export default function App() {
                 <b>P</b>·Esc 일시정지, 탭 전환 시 자동 정지.
               </li>
             </ol>
-          </div>
-          <div className="panel combo-panel">
-            <h3>콤보</h3>
-            <div className={combo >= 5 ? 'combo hot' : 'combo'} key={combo}>
-              <Flame size={40} />x{combo}
-            </div>
           </div>
         </aside>
       </main>

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef } from 'react';
 import { Engine, Bodies, Body, Events, Composite } from 'matter-js';
-import { FRUITS, MAX_LEVEL, makeSprites, randDrop } from './art';
+import { FRUITS, MAX_LEVEL, loadSprites, makeSprites, randDrop } from './art';
 import { useGameStore } from './store';
 import { syncBgm, duckBgm } from './bgm';
 import { sfx } from './sfx';
@@ -118,10 +118,6 @@ export function useSuika() {
   const g = useRef<MutableGame | null>(null);
   if (!g.current) g.current = createMutable();
 
-  useEffect(() => {
-    useGameStore.getState().setEvoUrls(sprites.map((s) => s.cv.toDataURL()));
-  }, [sprites]);
-
   const showToast = useCallback((msg: string) => {
     const store = useGameStore.getState();
     const st = g.current;
@@ -145,6 +141,16 @@ export function useSuika() {
     },
     [sprites],
   );
+
+  useEffect(() => {
+    let active = true;
+    loadSprites(sprites).then(() => {
+      if (!active) return;
+      useGameStore.getState().setEvoUrls(sprites.map((s) => s.cv.toDataURL()));
+      drawNext(g.current?.next ?? 0);
+    }).catch((error: unknown) => console.error(error));
+    return () => { active = false; };
+  }, [sprites, drawNext]);
 
   /* ---- 메인 이펙트: 엔진 생성 → 루프 → 클린업 ---- */
   useEffect(() => {
@@ -289,13 +295,13 @@ export function useSuika() {
 
     const draw = (t: number): void => {
       ctx.clearRect(0, 0, BOARD_W, BOARD_H);
-      ctx.fillStyle = '#fff8ea';
+      ctx.fillStyle = '#eef5e9';
       ctx.fillRect(0, 0, BOARD_W, BOARD_H);
-      ctx.fillStyle = '#3d2b1f';
+      ctx.fillStyle = '#376f55';
       ctx.fillRect(0, 0, WALL, BOARD_H);
       ctx.fillRect(BOARD_W - WALL, 0, WALL, BOARD_H);
       ctx.fillRect(0, BOARD_H - WALL, BOARD_W, WALL);
-      ctx.fillStyle = '#5c4433';
+      ctx.fillStyle = '#75a384';
       for (let y = 10; y < BOARD_H; y += 26) {
         ctx.fillRect(4, y, 6, 12);
         ctx.fillRect(BOARD_W - 10, y, 6, 12);
@@ -303,7 +309,7 @@ export function useSuika() {
 
       const danger = [...st.overTime.values()].some((v) => v > DANGER_AFTER_SEC);
       ctx.save();
-      ctx.strokeStyle = danger ? '#e63946' : '#d8c3a5';
+      ctx.strokeStyle = danger ? '#d94e4e' : '#a8bea8';
       ctx.lineWidth = danger ? 3 : 2;
       ctx.setLineDash([10, 7]);
       if (danger && Math.floor(t * 4) % 2 === 0) ctx.globalAlpha = 0.45;
@@ -316,7 +322,7 @@ export function useSuika() {
       if (!st.over) {
         ctx.save();
         ctx.globalAlpha = 0.28;
-        ctx.strokeStyle = '#3d2b1f';
+        ctx.strokeStyle = '#5b8a70';
         ctx.lineWidth = 2;
         ctx.setLineDash([6, 6]);
         ctx.beginPath();

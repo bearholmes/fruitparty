@@ -16,5 +16,5 @@ export const COMBO_WINDOW_FRAMES = 90;
 export const TOAST_MS = 1800;
 export const FINAL_BONUS = 5000;
 
-/** 진화 축하 토스트를 띄우는 최소 레벨 (7 = 복숭아) */
+/** 진화 축하 토스트를 띄우는 최소 레벨 (7 = 포도) */
 export const EVO_TOAST_MIN_LEVEL = 7;
