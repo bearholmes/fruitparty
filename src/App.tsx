@@ -152,7 +152,7 @@ export default function App() {
                   <div className="card-icon">
                     <img src="/fruits/fruit-09.webp" alt="" />
                   </div>
-                  <h2>후르츠파티</h2>
+                  <h2>과실 잔치</h2>
                   <div className="start-how">← → 이동 · 클릭 / Space 낙하 · ↑↓ 흔들기</div>
                   <button className="btn big" onClick={start}>
                     <Play size={20} /> 시작하기
@@ -242,7 +242,7 @@ export default function App() {
           </div>
           <div className="panel">
             <h3>
-              진화 도감 <small>10단계</small>
+              과실 도감 <small>10단계</small>
             </h3>
             <div className="evo">
               {FRUITS.map((f, i) => (
