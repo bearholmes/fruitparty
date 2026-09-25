@@ -33,7 +33,7 @@ describe('bgm', () => {
   beforeEach(() => {
     vi.useFakeTimers();
     vi.stubGlobal('Audio', FakeAudio);
-    useGameStore.setState({ soundOn: true, over: false, paused: false, started: true });
+    useGameStore.setState({ soundOn: true, bgmVolume: 1, over: false, paused: false, started: true });
   });
 
   afterEach(() => {
@@ -101,6 +101,34 @@ describe('bgm', () => {
     expect(a.volume).toBeLessThan(BGM_VOLUME);
     vi.advanceTimersByTime(600);
     expect(a.volume).toBe(BGM_VOLUME);
+  });
+
+  it('재생 중 음량 변경과 duck 복구에 선택한 음량을 쓴다', () => {
+    const a = bgm();
+    syncBgm();
+    vi.advanceTimersByTime(1000);
+    useGameStore.getState().setBgmVolume(0.5);
+    syncBgm();
+    expect(a.volume).toBeCloseTo(BGM_VOLUME * 0.5);
+    duckBgm();
+    expect(a.volume).toBeCloseTo(0.12 * 0.5);
+    vi.advanceTimersByTime(600);
+    expect(a.volume).toBeCloseTo(BGM_VOLUME * 0.5);
+  });
+
+  it('배경음악 음량 0에서는 멈추고 다시 올리면 재생한다', () => {
+    const a = bgm();
+    syncBgm();
+    vi.advanceTimersByTime(1000);
+    useGameStore.getState().setBgmVolume(0);
+    syncBgm();
+    vi.advanceTimersByTime(300);
+    expect(a.paused).toBe(true);
+    useGameStore.getState().setBgmVolume(0.5);
+    syncBgm();
+    vi.advanceTimersByTime(1000);
+    expect(a.paused).toBe(false);
+    expect(a.volume).toBeCloseTo(BGM_VOLUME * 0.5);
   });
 
   it('정지 상태에서는 duck하지 않는다', () => {

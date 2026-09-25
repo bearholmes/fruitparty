@@ -24,6 +24,8 @@ function freshState() {
     toast: null,
     evoUrls: [],
     soundOn: true,
+    bgmVolume: 1,
+    sfxVolume: 1,
     canShake: true,
   });
 }
@@ -173,6 +175,21 @@ describe('store', () => {
     expect(useGameStore.getState().toast?.msg).toBe('테스트');
     s.hideToast();
     expect(useGameStore.getState().toast).toBeNull();
+  });
+
+  it('배경음악과 효과음 음량을 따로 저장하고 다시 불러온다', () => {
+    const values = new Map<string, string>();
+    vi.stubGlobal('localStorage', {
+      getItem: (key: string) => values.get(key) ?? null,
+      setItem: (key: string, value: string) => values.set(key, value),
+    });
+    const state = useGameStore.getState();
+    state.setBgmVolume(0.4);
+    state.setSfxVolume(0.7);
+    state.toggleSound();
+    freshState();
+    useGameStore.getState().loadAudioSettings();
+    expect(useGameStore.getState()).toMatchObject({ soundOn: false, bgmVolume: 0.4, sfxVolume: 0.7 });
   });
 
   it('start는 게임을 시작하고 일시정지를 푼다', () => {

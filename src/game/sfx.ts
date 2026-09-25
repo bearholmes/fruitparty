@@ -1,5 +1,4 @@
-/* WebAudio 신스 효과음 — 에셋 없이 오실레이터·노이즈로 합성.
-   soundOn이 꺼져 있으면 컨텍스트를 만들지 않고 조용히 스킵. */
+/* WebAudio 신스 효과음 — 에셋 없이 오실레이터·노이즈로 합성. */
 
 import { useGameStore } from './store';
 
@@ -18,7 +17,8 @@ let ctx: AudioContext | null = null;
 let noiseBuf: AudioBuffer | null = null;
 
 function ac(): AudioContext | null {
-  if (!useGameStore.getState().soundOn) return null;
+  const { soundOn, sfxVolume } = useGameStore.getState();
+  if (!soundOn || sfxVolume === 0) return null;
   try {
     if (!ctx) {
       const AC =
@@ -57,7 +57,7 @@ function tone(o: ToneOpts): void {
       osc.frequency.exponentialRampToValueAtTime(Math.max(1, o.freqEnd), t0 + dur);
     }
     g.gain.setValueAtTime(0.0001, t0);
-    g.gain.exponentialRampToValueAtTime(o.vol ?? 0.15, t0 + 0.01);
+    g.gain.exponentialRampToValueAtTime((o.vol ?? 0.15) * useGameStore.getState().sfxVolume, t0 + 0.01);
     g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
     osc.connect(g);
     g.connect(c.destination);
@@ -96,7 +96,7 @@ function noise(o: NoiseOpts): void {
     f.frequency.value = o.filterFreq ?? 800;
     const g = c.createGain();
     g.gain.setValueAtTime(0.0001, t0);
-    g.gain.exponentialRampToValueAtTime(o.vol ?? 0.2, t0 + 0.02);
+    g.gain.exponentialRampToValueAtTime((o.vol ?? 0.2) * useGameStore.getState().sfxVolume, t0 + 0.02);
     g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
     src.connect(f);
     f.connect(g);

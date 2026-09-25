@@ -346,6 +346,28 @@ button:focus-visible {
   border-radius: 99px;
   padding: 4px 8px;
 }
+.audio-control {
+  display: grid;
+  grid-template-columns: 72px minmax(0, 1fr) 38px;
+  align-items: center;
+  gap: 10px;
+  font-size: 13px;
+  font-weight: 800;
+}
+.audio-control + .audio-control {
+  margin-top: 8px;
+}
+.audio-control input {
+  width: 100%;
+  min-height: 36px;
+  margin: 0;
+  accent-color: var(--green);
+  cursor: pointer;
+}
+.audio-control output {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
 .evo {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));

@@ -4,8 +4,11 @@ import { mergeFreq, sfx } from './sfx';
 
 class FakeParam {
   value = 0;
+  ramps: number[] = [];
   setValueAtTime(): void {}
-  exponentialRampToValueAtTime(): void {}
+  exponentialRampToValueAtTime(value: number): void {
+    this.ramps.push(value);
+  }
 }
 
 class FakeOsc {
@@ -46,6 +49,7 @@ class FakeCtx {
   destination = {};
   oscs: FakeOsc[] = [];
   srcs: FakeSrc[] = [];
+  gains: FakeGain[] = [];
   constructor() {
     FakeCtx.instances.push(this);
   }
@@ -58,7 +62,9 @@ class FakeCtx {
     return o;
   }
   createGain(): FakeGain {
-    return new FakeGain();
+    const gain = new FakeGain();
+    this.gains.push(gain);
+    return gain;
   }
   createBiquadFilter(): FakeFilter {
     return new FakeFilter();
@@ -82,7 +88,7 @@ function lastCtx(): FakeCtx {
 describe('sfx', () => {
   beforeEach(() => {
     vi.stubGlobal('AudioContext', FakeCtx);
-    useGameStore.setState({ soundOn: true, over: false, paused: false });
+    useGameStore.setState({ soundOn: true, sfxVolume: 1, over: false, paused: false });
   });
 
   it('오디오 미지원 환경에서도 throw하지 않는다', () => {
@@ -138,5 +144,15 @@ describe('sfx', () => {
     sfx.drop();
     sfx.merge(1, 0);
     expect(FakeCtx.instances.length).toBe(n);
+  });
+
+  it('효과음 음량을 조절하고 0이면 재생하지 않는다', () => {
+    useGameStore.getState().setSfxVolume(0.5);
+    sfx.drop();
+    expect(lastCtx().gains.at(-1)?.gain.ramps[0]).toBeCloseTo(0.09);
+    const count = lastCtx().oscs.length;
+    useGameStore.getState().setSfxVolume(0);
+    sfx.drop();
+    expect(lastCtx().oscs).toHaveLength(count);
   });
 });

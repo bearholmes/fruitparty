@@ -51,12 +51,21 @@ export default function App() {
   const toast = useGameStore((s) => s.toast);
   const evoUrls = useGameStore((s) => s.evoUrls);
   const soundOn = useGameStore((s) => s.soundOn);
+  const bgmVolume = useGameStore((s) => s.bgmVolume);
+  const sfxVolume = useGameStore((s) => s.sfxVolume);
   const toggleSound = useGameStore((s) => s.toggleSound);
+  const setBgmVolume = useGameStore((s) => s.setBgmVolume);
+  const setSfxVolume = useGameStore((s) => s.setSfxVolume);
+  const loadAudioSettings = useGameStore((s) => s.loadAudioSettings);
   const canShake = useGameStore((s) => s.canShake);
   const danger = useGameStore((s) => s.danger);
   const dangerShakeLeft = useGameStore((s) => s.dangerShakeLeft);
 
   const busy = over || paused || !started;
+
+  useEffect(() => {
+    loadAudioSettings();
+  }, [loadAudioSettings]);
 
   const openPanel = useCallback(() => {
     const game = useGameStore.getState();
@@ -317,11 +326,26 @@ export default function App() {
           </div>
           <div className="sysbar">
             <button className="btn sm" onClick={toggleSound}>
-              {soundOn ? <Volume2 size={15} /> : <VolumeX size={15} />} 사운드
+              {soundOn ? <Volume2 size={15} /> : <VolumeX size={15} />} {soundOn ? '소리 끄기' : '소리 켜기'}
             </button>
             <button className="btn sm" onClick={restart} disabled={over && (pendingLeaderboard || leaderboardStatus !== 'ready')}>
               <RotateCcw size={15} /> 다시 시작
             </button>
+          </div>
+          <div className="panel">
+            <h3>소리 조절</h3>
+            <label className="audio-control">
+              <span>배경음악</span>
+              <input type="range" min="0" max="100" value={Math.round(bgmVolume * 100)}
+                onChange={(event) => setBgmVolume(Number(event.target.value) / 100)} />
+              <output>{Math.round(bgmVolume * 100)}%</output>
+            </label>
+            <label className="audio-control">
+              <span>효과음</span>
+              <input type="range" min="0" max="100" value={Math.round(sfxVolume * 100)}
+                onChange={(event) => setSfxVolume(Number(event.target.value) / 100)} />
+              <output>{Math.round(sfxVolume * 100)}%</output>
+            </label>
           </div>
           <div className="panel">
             <h3>
