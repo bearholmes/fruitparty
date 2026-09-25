@@ -45,8 +45,8 @@ function ensureGraph(a: HTMLAudioElement): void {
     const source = ctx.createMediaElementSource(a);
     source.connect(gain);
     gain.connect(ctx.destination);
-    a.volume = 1;
     (globalThis as unknown as Record<string, BgmGraph | null>)[BGM_GRAPH_KEY] = { source, gain };
+    try { a.volume = 1; } catch { /* iOS에서는 변경이 막힐 수 있다. */ }
   } catch {
     // Web Audio를 사용할 수 없는 브라우저는 오디오 요소의 음량을 쓴다.
   }
@@ -59,7 +59,9 @@ function outputVolume(a: HTMLAudioElement): number {
 function setOutputVolume(a: HTMLAudioElement, value: number): void {
   const graph = getGraph();
   if (graph) graph.gain.gain.value = value;
-  else a.volume = value;
+  else {
+    try { a.volume = value; } catch { /* Web Audio를 지원하지 않는 기기의 대체 경로 */ }
+  }
 }
 
 let fadeTimer: ReturnType<typeof setInterval> | null = null;
@@ -80,9 +82,9 @@ export function ensureBgm(): HTMLAudioElement | null {
   if (typeof Audio === 'undefined') return null;
   const a = new Audio(`${import.meta.env.BASE_URL}bgm.wav`);
   a.loop = true;
-  a.volume = selectedVolume();
   setBgm(a);
   ensureGraph(a);
+  if (!getGraph()) setOutputVolume(a, selectedVolume());
   return a;
 }
 
