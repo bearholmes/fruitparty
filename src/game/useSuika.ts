@@ -21,6 +21,7 @@ import {
   DANGER_SHAKE_MAX,
   DANGER_CLEAR_RESET_SEC,
   FRUIT_RESTITUTION,
+  MERGE_DELAY_SEC,
 } from './constants';
 
 /** 과일 식별용 커스텀 필드를 단 Matter 바디 */
@@ -42,6 +43,12 @@ interface PopFx {
   t: number;
 }
 
+interface ContactPair {
+  a: FruitBody;
+  b: FruitBody;
+  t: number;
+}
+
 interface CollisionEvent {
   pairs: Array<{ bodyA: Body; bodyB: Body }>;
 }
@@ -57,6 +64,7 @@ interface MutableGame {
   combo: number;
   comboTimer: number;
   overTime: Map<number, number>;
+  contactT: Map<string, ContactPair>;
   dangerT: number;
   dangerActive: boolean;
   dangerClearT: number;
@@ -80,6 +88,7 @@ function createMutable(): MutableGame {
     combo: 0,
     comboTimer: 0,
     overTime: new Map(),
+    contactT: new Map(),
     dangerT: 0,
     dangerActive: false,
     dangerClearT: 0,
@@ -194,65 +203,86 @@ export function useSuika() {
       setTimeout(() => holder.classList.remove('combo-flash'), 350);
     };
 
-    const onCollide = (e: CollisionEvent): void => {
+    /* 같은 레벨끼리 일정 시간 맞닿아 있어야 합체 — 스치는 접촉은 무시해
+       난사해도 자동 정리되지 않고 보드가 차오르게 함 */
+    const doMerge = (a: FruitBody, b: FruitBody): void => {
+      if (a.merged || b.merged) return;
+      const lv = a.fruitLevel ?? 0;
+      a.merged = b.merged = true;
+      const mx = (a.position.x + b.position.x) / 2;
+      const my = (a.position.y + b.position.y) / 2;
+      Composite.remove(world, a);
+      Composite.remove(world, b);
+      st.overTime.delete(a.id);
+      st.overTime.delete(b.id);
+      for (const [key, p] of st.contactT) {
+        if (p.a === a || p.b === a || p.a === b || p.b === b) st.contactT.delete(key);
+      }
+      if (lv === MAX_LEVEL) {
+        store().addScore(FINAL_BONUS);
+        st.mergeAnim.push({
+          x: mx,
+          y: my,
+          t: 0,
+          text: `+${FINAL_BONUS}`,
+          size: 30,
+          color: '#e63946',
+        });
+        pop(mx, my, lv);
+        showToast(`💥 단감 폭발! +${FINAL_BONUS}`);
+        st.combo++;
+        store().setCombo(st.combo);
+        st.comboTimer = COMBO_WINDOW_FRAMES;
+        pulseCombo(st.combo);
+        sfx.explosion();
+        duckBgm();
+        return;
+      }
+      const nl = lv + 1;
+      const body = Bodies.circle(mx, Math.min(my, BOARD_H - 120), FRUITS[nl].r, {
+        restitution: FRUIT_RESTITUTION,
+        friction: 0.45,
+        frictionAir: 0.008,
+        density: 0.0012 + nl * 0.00025,
+      }) as FruitBody;
+      Body.scale(body, FRUITS[nl].hitbox.x, FRUITS[nl].hitbox.y);
+      body.fruitLevel = nl;
+      Composite.add(world, body);
+      pop(mx, my, nl);
+      const pts = Math.round(FRUITS[nl].score * (1 + st.combo * 0.5));
+      store().addScore(pts);
+      st.combo++;
+      store().setCombo(st.combo);
+      st.comboTimer = COMBO_WINDOW_FRAMES;
+      st.mergeAnim.push({ x: mx, y: my, t: 0, text: `+${pts}`, ...comboStyle(st.combo) });
+      sfx.merge(nl, st.combo);
+      if (nl >= EVO_TOAST_MIN_LEVEL) showToast(`🎉 ${FRUITS[nl].name} 탄생!`);
+      pulseCombo(st.combo);
+    };
+
+    const onActive = (e: CollisionEvent): void => {
       if (st.over || store().paused) return;
+      const seen = new Set<string>();
       for (const pair of e.pairs) {
         const a = pair.bodyA as FruitBody;
         const b = pair.bodyB as FruitBody;
         if (a.fruitLevel === undefined || b.fruitLevel === undefined) continue;
         if (a.fruitLevel !== b.fruitLevel) continue;
         if (a.merged || b.merged) continue;
-        const lv = a.fruitLevel;
-        a.merged = b.merged = true;
-        const mx = (a.position.x + b.position.x) / 2;
-        const my = (a.position.y + b.position.y) / 2;
-        Composite.remove(world, a);
-        Composite.remove(world, b);
-        st.overTime.delete(a.id);
-        st.overTime.delete(b.id);
-        if (lv === MAX_LEVEL) {
-          store().addScore(FINAL_BONUS);
-          st.mergeAnim.push({
-            x: mx,
-            y: my,
-            t: 0,
-            text: `+${FINAL_BONUS}`,
-            size: 30,
-            color: '#e63946',
-          });
-          pop(mx, my, lv);
-          showToast(`💥 단감 폭발! +${FINAL_BONUS}`);
-          st.combo++;
-          store().setCombo(st.combo);
-          st.comboTimer = COMBO_WINDOW_FRAMES;
-          pulseCombo(st.combo);
-          sfx.explosion();
-          duckBgm();
-          continue;
-        }
-        const nl = lv + 1;
-        const body = Bodies.circle(mx, Math.min(my, BOARD_H - 120), FRUITS[nl].r, {
-          restitution: FRUIT_RESTITUTION,
-          friction: 0.45,
-          frictionAir: 0.008,
-          density: 0.0012 + nl * 0.00025,
-        }) as FruitBody;
-        Body.scale(body, FRUITS[nl].hitbox.x, FRUITS[nl].hitbox.y);
-        body.fruitLevel = nl;
-        Composite.add(world, body);
-        pop(mx, my, nl);
-        const pts = Math.round(FRUITS[nl].score * (1 + st.combo * 0.5));
-        store().addScore(pts);
-        st.combo++;
-        store().setCombo(st.combo);
-        st.comboTimer = COMBO_WINDOW_FRAMES;
-        st.mergeAnim.push({ x: mx, y: my, t: 0, text: `+${pts}`, ...comboStyle(st.combo) });
-        sfx.merge(nl, st.combo);
-        if (nl >= EVO_TOAST_MIN_LEVEL) showToast(`🎉 ${FRUITS[nl].name} 탄생!`);
-        pulseCombo(st.combo);
+        const key = a.id < b.id ? `${a.id}:${b.id}` : `${b.id}:${a.id}`;
+        seen.add(key);
+        const prev = st.contactT.get(key);
+        /* Engine.update 고정 스텝(1000/60ms)과 동일한 누적 단위 */
+        st.contactT.set(key, { a, b, t: (prev?.t ?? 0) + 1 / 60 });
+      }
+      for (const key of [...st.contactT.keys()]) {
+        if (!seen.has(key)) st.contactT.delete(key);
+      }
+      for (const { a, b, t } of st.contactT.values()) {
+        if (t >= MERGE_DELAY_SEC) doMerge(a, b);
       }
     };
-    Events.on(engine, 'collisionStart', onCollide);
+    Events.on(engine, 'collisionActive', onActive);
 
     const drawFruit = (x: number, y: number, lv: number, angle = 0, ghost = false): void => {
       const s = sprites[lv];
@@ -507,7 +537,7 @@ export function useSuika() {
       window.removeEventListener('keydown', onKey);
       document.removeEventListener('visibilitychange', onVis);
       unsubBgm();
-      Events.off(engine, 'collisionStart', onCollide);
+      Events.off(engine, 'collisionActive', onActive);
       Engine.clear(engine);
       st.toastTimer = clearTimer(st.toastTimer);
       st.dropTimer = clearTimer(st.dropTimer);
@@ -621,6 +651,7 @@ export function useSuika() {
     st.over = false;
     st.canDrop = true;
     st.overTime.clear();
+    st.contactT.clear();
     st.dangerT = 0;
     st.dangerActive = false;
     st.dangerClearT = 0;

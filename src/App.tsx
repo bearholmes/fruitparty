@@ -192,7 +192,7 @@ export default function App() {
             </div>
           </div>
           <div className="canvas-holder">
-            <canvas id="game" ref={canvasRef} width="480" height="660"></canvas>
+            <canvas id="game" ref={canvasRef} width="420" height="660"></canvas>
             {!started && (
               <div className="overlay">
                 <div className="card start-card">
@@ -341,10 +341,10 @@ export default function App() {
             <h3>규칙</h3>
             <ol>
               <li>
-                같은 과일 2개가 닿으면 <b>상위 과일 1개</b>로 합쳐져요.
+                같은 과일 2개가 잠시 맞닿아 있으면 <b>상위 과일 1개</b>로 합쳐져요.
               </li>
               <li>
-                빨간 선 위에 과일이 <b>1.5초</b> 쌓이면 게임오버.
+                빨간 선 위에 과일이 <b>3초</b> 쌓이면 게임오버.
               </li>
               <li>
                 단감 2개가 만나면 터지며 <b>보너스</b>!
