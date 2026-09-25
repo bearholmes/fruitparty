@@ -220,7 +220,7 @@ export default function App() {
               </div>
             )}
             {over && (
-              <div className="overlay">
+              <div className="overlay game-over-layer">
                 <div className="card game-over-card">
                   <div className="card-icon">
                     <Frown size={48} />

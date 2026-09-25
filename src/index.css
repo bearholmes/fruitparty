@@ -440,12 +440,14 @@ button:focus-visible {
   inset: 0;
   background: rgba(24, 54, 39, 0.47);
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   place-items: center;
   padding: 16px;
   backdrop-filter: blur(4px);
 }
 .card {
   width: min(340px, 100%);
+  min-width: 0;
   background: #fffef9;
   border: 1px solid #e9e7db;
   border-radius: 24px;
@@ -453,6 +455,19 @@ button:focus-visible {
   text-align: center;
   box-shadow: 0 20px 50px rgba(12, 37, 23, 0.2);
   animation: pop 0.3s cubic-bezier(0.2, 1.4, 0.4, 1);
+}
+.game-over-layer {
+  position: fixed;
+  z-index: 12;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow-y: auto;
+}
+.game-over-card {
+  max-height: calc(100dvh - 32px);
+  overflow-y: auto;
+  flex: none;
 }
 .intro-image {
   display: block;
@@ -558,6 +573,7 @@ button:focus-visible {
   padding: 0 6px;
   gap: 5px;
   font-size: clamp(12px, 3.5vw, 16px);
+  white-space: normal;
 }
 .game-over-actions .btn.big {
   grid-column: 1 / -1;
