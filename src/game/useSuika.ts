@@ -534,6 +534,7 @@ export function useSuika() {
       if (!st.over && store().started) store().setPaused(true);
     };
     const detachInput = attachGameInput(canvas, {
+      isOver: () => store().over,
       setDropX,
       tap,
       nudge: (dir) => nudgeRef.current(dir),

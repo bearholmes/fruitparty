@@ -2,6 +2,16 @@ import { useState } from 'react';
 import { Camera, Frown, RotateCcw, Trophy } from 'lucide-react';
 import { useGameStore } from '../game/store';
 
+const PLAYER_NAME_KEY = 'fruitparty.player-name';
+
+function savedPlayerName(): string {
+  try {
+    return Array.from(localStorage.getItem(PLAYER_NAME_KEY)?.trim() ?? '').slice(0, 8).join('');
+  } catch {
+    return '';
+  }
+}
+
 interface GameOverOverlayProps {
   score: number;
   onRestart: () => void;
@@ -10,7 +20,7 @@ interface GameOverOverlayProps {
 }
 
 export function GameOverOverlay({ score, onRestart, onOpenLeaderboard, onDownloadShot }: GameOverOverlayProps) {
-  const [playerName, setPlayerName] = useState('');
+  const [playerName, setPlayerName] = useState(savedPlayerName);
   const isRecord = useGameStore((s) => s.isRecord);
   const pendingLeaderboard = useGameStore((s) => s.pendingLeaderboard);
   const submittingLeaderboard = useGameStore((s) => s.submittingLeaderboard);
@@ -23,6 +33,11 @@ export function GameOverOverlay({ score, onRestart, onOpenLeaderboard, onDownloa
     event.preventDefault();
     if (!playerName.trim()) return;
     if (await saveLeaderboardScore(playerName)) {
+      try {
+        localStorage.setItem(PLAYER_NAME_KEY, playerName.trim());
+      } catch {
+        // 브라우저 저장소를 사용할 수 없어도 점수 등록은 유지한다.
+      }
       setPlayerName('');
       onOpenLeaderboard();
     }
@@ -74,7 +89,7 @@ export function GameOverOverlay({ score, onRestart, onOpenLeaderboard, onDownloa
         )}
         <div className="game-over-actions">
           <button className="btn big" onClick={onRestart} disabled={submittingLeaderboard}>
-            <RotateCcw size={20} /> 다시 하기 (R)
+            <RotateCcw size={20} /> 다시 하기
           </button>
           <button className="btn" onClick={onOpenLeaderboard}>
             <Trophy size={18} /> 베스트 20 보기
