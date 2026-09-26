@@ -2,6 +2,7 @@ export interface LeaderboardEntry {
   name: string;
   score: number;
   maxCombo: number | null;
+  feverCount: number | null;
 }
 
 export type LeaderboardPeriod = 'daily' | 'weekly' | 'all';
@@ -27,12 +28,13 @@ export async function submitLeaderboardScore(
   name: string,
   score: number,
   maxCombo: number,
+  feverCount: number,
   submissionId: string,
 ): Promise<LeaderboardBoards> {
   const response = await fetch('/api/leaderboard', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ name, score, maxCombo, submissionId }),
+    body: JSON.stringify({ name, score, maxCombo, feverCount, submissionId }),
   });
   if (!response.ok || !response.headers.get('content-type')?.includes('application/json'))
     throw new Error('점수를 저장하지 못했습니다. 다시 시도해 주세요.');

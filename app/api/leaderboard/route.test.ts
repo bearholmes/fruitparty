@@ -8,7 +8,7 @@ vi.mock('../../../db/leaderboard', () => ({
 }));
 
 function boards(name: string, score: number, maxCombo: number | null) {
-  const entries = [{ name, score, maxCombo }];
+  const entries = [{ name, score, maxCombo, feverCount: null }];
   return { daily: entries, weekly: entries, all: entries };
 }
 
@@ -25,13 +25,13 @@ describe('leaderboard POST', () => {
     vi.mocked(addScore).mockResolvedValue(boards('unknown', 50, 4));
     const request = new Request('http://localhost/api/leaderboard', {
       method: 'POST',
-      body: JSON.stringify({ name: 'unknown', score: 50, maxCombo: 4, submissionId }),
+      body: JSON.stringify({ name: 'unknown', score: 50, maxCombo: 4, feverCount: 3, submissionId }),
     });
 
     const response = await POST(request);
 
     expect(response.status).toBe(201);
-    expect(addScore).toHaveBeenCalledWith('unknown', 50, 4, submissionId);
+    expect(addScore).toHaveBeenCalledWith('unknown', 50, 4, 3, submissionId);
   });
 
   it('8자 이름은 허용하고 9자 이름은 거절한다', async () => {
@@ -64,6 +64,18 @@ describe('leaderboard POST', () => {
     });
 
     expect((await POST(request)).status).toBe(201);
-    expect(addScore).toHaveBeenCalledWith('철수', 50, null, submissionId);
+    expect(addScore).toHaveBeenCalledWith('철수', 50, null, null, submissionId);
+  });
+
+  it('피버 횟수는 음수나 소수를 거절한다', async () => {
+    vi.mocked(addScore).mockClear();
+    for (const feverCount of [-1, 1.5]) {
+      const request = new Request('http://localhost/api/leaderboard', {
+        method: 'POST',
+        body: JSON.stringify({ name: '철수', score: 50, maxCombo: 4, feverCount, submissionId }),
+      });
+      expect((await POST(request)).status).toBe(400);
+    }
+    expect(addScore).not.toHaveBeenCalled();
   });
 });

@@ -3,7 +3,7 @@ import { useGameStore } from './store';
 import { DANGER_SHAKE_MAX } from './constants';
 
 function boards(name: string, score: number) {
-  const entries = [{ name, score, maxCombo: null }];
+  const entries = [{ name, score, maxCombo: null, feverCount: null }];
   return { daily: entries, weekly: entries, all: entries };
 }
 
@@ -35,6 +35,7 @@ function freshState() {
     canShake: true,
     feverActive: false,
     feverLeft: 0,
+    feverCount: 0,
   });
 }
 
@@ -61,11 +62,11 @@ describe('store', () => {
   });
 
   it('DB 순위표를 읽고 게임오버 점수의 등록 자격을 판정한다', async () => {
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(Response.json({ boards: { daily: [], weekly: [], all: [{ name: '철수', score: 100, maxCombo: null }] } })));
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(Response.json({ boards: { daily: [], weekly: [], all: [{ name: '철수', score: 100, maxCombo: null, feverCount: null }] } })));
     useGameStore.setState({ over: true, score: 50 });
     await useGameStore.getState().refreshLeaderboard();
     expect(useGameStore.getState()).toMatchObject({
-      leaderboard: { daily: [], weekly: [], all: [{ name: '철수', score: 100, maxCombo: null }] },
+      leaderboard: { daily: [], weekly: [], all: [{ name: '철수', score: 100, maxCombo: null, feverCount: null }] },
       best: 100,
       pendingLeaderboard: true,
       leaderboardStatus: 'ready',
@@ -76,10 +77,10 @@ describe('store', () => {
     const fetchMock = vi.fn().mockResolvedValue(Response.json({ boards: boards('영희', 50) }));
     vi.stubGlobal('fetch', fetchMock);
     const submissionId = '11111111-1111-4111-8111-111111111111';
-    useGameStore.setState({ over: true, score: 50, maxCombo: 7, pendingLeaderboard: true, submissionId });
+    useGameStore.setState({ over: true, score: 50, maxCombo: 7, feverCount: 3, pendingLeaderboard: true, submissionId });
     expect(await useGameStore.getState().saveLeaderboardScore('영희')).toBe(true);
     expect(fetchMock).toHaveBeenCalledWith('/api/leaderboard', expect.objectContaining({ method: 'POST' }));
-    expect(JSON.parse(fetchMock.mock.calls[0][1].body)).toEqual({ name: '영희', score: 50, maxCombo: 7, submissionId });
+    expect(JSON.parse(fetchMock.mock.calls[0][1].body)).toEqual({ name: '영희', score: 50, maxCombo: 7, feverCount: 3, submissionId });
     expect(useGameStore.getState()).toMatchObject({
       leaderboard: boards('영희', 50),
       pendingLeaderboard: false,
@@ -267,16 +268,16 @@ describe('store', () => {
     expect(useGameStore.getState()).toMatchObject({ danger: true, dangerShakeLeft: 3 });
   });
 
-  it('피버 상태를 세팅하고 reset하면 해제된다', () => {
+  it('피버 발동 횟수만 세고 시간 갱신은 세지 않으며 reset하면 초기화한다', () => {
     const s = useGameStore.getState();
-    s.setFever(true, 30);
-    expect(useGameStore.getState()).toMatchObject({ feverActive: true, feverLeft: 30 });
+    s.startFever(30);
+    expect(useGameStore.getState()).toMatchObject({ feverActive: true, feverLeft: 30, feverCount: 1 });
     s.setFever(true, 12);
-    expect(useGameStore.getState().feverLeft).toBe(12);
+    expect(useGameStore.getState()).toMatchObject({ feverLeft: 12, feverCount: 1 });
     s.setFever(false, 0);
-    expect(useGameStore.getState()).toMatchObject({ feverActive: false, feverLeft: 0 });
-    s.setFever(true, 30);
+    s.startFever(30);
+    expect(useGameStore.getState()).toMatchObject({ feverActive: true, feverLeft: 30, feverCount: 2 });
     s.reset(1);
-    expect(useGameStore.getState()).toMatchObject({ feverActive: false, feverLeft: 0 });
+    expect(useGameStore.getState()).toMatchObject({ feverActive: false, feverLeft: 0, feverCount: 0 });
   });
 });

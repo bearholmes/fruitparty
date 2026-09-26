@@ -1,0 +1,1 @@
+ALTER TABLE `leaderboard` ADD `fever_count` integer;

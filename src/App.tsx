@@ -343,8 +343,8 @@ export default function App() {
             </button>
           </div>
           <div className="sysbar">
-            <button className="btn sm" onClick={toggleSound}>
-              {soundOn ? <Volume2 size={15} /> : <VolumeX size={15} />} {soundOn ? '소리 끄기' : '소리 켜기'}
+            <button className="btn sm" onClick={toggleSound} aria-pressed={soundOn}>
+              {soundOn ? <Volume2 size={15} /> : <VolumeX size={15} />} 소리 {soundOn ? 'ON' : 'OFF'}
             </button>
             <button className="btn sm" onClick={restart}>
               <RotateCcw size={15} /> 다시 시작
@@ -455,7 +455,7 @@ export default function App() {
                     <div className="leaderboard-player">
                       <span className="leaderboard-name">{visibleLeaderboard[index]?.name ?? '—'}</span>
                       <span className="leaderboard-combo">
-                        최고 콤보 {visibleLeaderboard[index]?.maxCombo == null ? '—' : `×${visibleLeaderboard[index].maxCombo}`}
+                        MAX COMBO {visibleLeaderboard[index]?.maxCombo == null ? '—' : `x${visibleLeaderboard[index].maxCombo}`} | FT {visibleLeaderboard[index]?.feverCount == null ? '—' : `x${visibleLeaderboard[index].feverCount}`}
                       </span>
                     </div>
                     <strong>{visibleLeaderboard[index]?.score.toLocaleString() ?? '—'}</strong>

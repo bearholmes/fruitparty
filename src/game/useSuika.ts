@@ -268,7 +268,7 @@ export function useSuika() {
           setTimeout(() => holder.classList.remove('fever-flash'), 650);
         }
         st.feverT = FEVER_DURATION_SEC;
-        store().setFever(true, FEVER_DURATION_SEC);
+        store().startFever(FEVER_DURATION_SEC);
         showToast(
           swept > 0
             ? `🔥 피버타임 ${FEVER_DURATION_SEC}초! 점수 ${FEVER_SCORE_MULT}배·${swept}개 정리!`

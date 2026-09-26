@@ -12,13 +12,14 @@ describe('베스트 20 진입', () => {
       name: '테스트',
       score: 100 - index,
       maxCombo: null,
+      feverCount: null,
     }));
     expect(qualifiesForLeaderboard(81, entries)).toBe(false);
     expect(qualifiesForLeaderboard(82, entries)).toBe(true);
   });
 
   it('일간·주간·전체 중 한 곳만 진입해도 등록 자격이 있다', () => {
-    const full = Array.from({ length: 20 }, (_, index) => ({ name: '테스트', score: 100 - index, maxCombo: null }));
+    const full = Array.from({ length: 20 }, (_, index) => ({ name: '테스트', score: 100 - index, maxCombo: null, feverCount: null }));
     expect(qualifiesForAnyLeaderboard(1, { daily: [], weekly: full, all: full })).toBe(true);
     expect(qualifiesForAnyLeaderboard(1, { daily: full, weekly: full, all: full })).toBe(false);
   });

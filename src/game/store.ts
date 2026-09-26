@@ -54,6 +54,7 @@ export interface GameState {
   canShake: boolean;
   feverActive: boolean;
   feverLeft: number;
+  feverCount: number;
   addScore: (n: number) => void;
   setCombo: (combo: number) => void;
   setNextLv: (nextLv: number) => void;
@@ -73,6 +74,7 @@ export interface GameState {
   loadAudioSettings: () => void;
   setCanShake: (v: boolean) => void;
   setFever: (active: boolean, left: number) => void;
+  startFever: (duration: number) => void;
   reset: (nextLv: number) => void;
 }
 
@@ -104,6 +106,7 @@ export const useGameStore = create<GameState>()((set, get) => ({
   canShake: true,
   feverActive: false,
   feverLeft: 0,
+  feverCount: 0,
 
   addScore: (n) => {
     const score = get().score + Math.round(n);
@@ -143,11 +146,11 @@ export const useGameStore = create<GameState>()((set, get) => ({
     }
   },
   saveLeaderboardScore: async (name, allowUnconfirmed = false) => {
-    const { over, pendingLeaderboard, submittedLeaderboard, submittingLeaderboard, score, maxCombo, submissionId } = get();
+    const { over, pendingLeaderboard, submittedLeaderboard, submittingLeaderboard, score, maxCombo, feverCount, submissionId } = get();
     if (!over || (!pendingLeaderboard && !allowUnconfirmed) || submittedLeaderboard || submittingLeaderboard || !submissionId || !name.trim() || score <= 0) return false;
     set({ submittingLeaderboard: true, leaderboardError: null });
     try {
-      const leaderboard = await submitLeaderboardScore(name.trim(), score, maxCombo, submissionId);
+      const leaderboard = await submitLeaderboardScore(name.trim(), score, maxCombo, feverCount, submissionId);
       if (get().submissionId !== submissionId) {
         set({ leaderboard });
         return true;
@@ -208,6 +211,7 @@ export const useGameStore = create<GameState>()((set, get) => ({
   },
   setCanShake: (canShake) => set({ canShake }),
   setFever: (feverActive, feverLeft) => set({ feverActive, feverLeft }),
+  startFever: (duration) => set((state) => ({ feverActive: true, feverLeft: duration, feverCount: state.feverCount + 1 })),
   reset: (nextLv) =>
     set({
       score: 0,
@@ -219,6 +223,7 @@ export const useGameStore = create<GameState>()((set, get) => ({
       danger: false,
       feverActive: false,
       feverLeft: 0,
+      feverCount: 0,
       dangerShakeLeft: DANGER_SHAKE_MAX,
       isRecord: false,
       pendingLeaderboard: false,

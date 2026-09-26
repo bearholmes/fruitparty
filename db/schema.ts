@@ -5,6 +5,7 @@ export const leaderboard = sqliteTable('leaderboard', {
   name: text('name').notNull(),
   score: integer('score').notNull(),
   maxCombo: integer('max_combo'),
+  feverCount: integer('fever_count'),
   createdAt: text('created_at'),
   submissionId: text('submission_id').unique(),
 });
