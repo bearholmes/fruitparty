@@ -8,7 +8,7 @@ vi.mock('../../../db/leaderboard', () => ({
 }));
 
 function boards(name: string, score: number, maxCombo: number | null) {
-  const entries = [{ name, score, maxCombo, feverCount: null }];
+  const entries = [{ name, score, maxCombo, feverCount: null, createdAt: '2026-09-25T15:00:00.000Z' }];
   return { daily: entries, weekly: entries, all: entries };
 }
 
