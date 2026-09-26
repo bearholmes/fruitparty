@@ -1,123 +1,49 @@
 /* 절차적 BGM — 3개 곡을 오실레이터로 합성해 게임마다 랜덤 재생.
    파일 루프 대신 코드 작곡: 무한 재생 + 위험 시 텐션 편곡·피버 시 고조 편곡으로 전환.
-   sfx.ts와 같은 Web Audio 합성 방식을 쓴다 (에셋 없음). */
+   곡 데이터는 ./audio/tracks, 신스는 ./audio/synth, 믹싱값은 ./config/audio */
 
 import { useGameStore } from './store';
-import { ensureAudioContext } from './sfx';
+import { ensureAudioContext } from './audio/context';
+import { playTone, playNoise } from './audio/synth';
+import { BGM_TRACKS, type BgmTrack } from './audio/tracks';
+import {
+  BGM_VOLUME,
+  DUCKED_VOLUME,
+  FADE_IN_MS,
+  FADE_OUT_MS,
+  DUCK_MS,
+  PREVIEW_MS,
+  TENSION_RELEASE_SEC,
+  SCHED_INTERVAL_MS,
+  LOOKAHEAD_SEC,
+  STEPS_PER_BAR,
+  BAR_COUNT,
+  SKANK_VOL,
+  ARP_VOL,
+  ARP_TENSE_VOL,
+  BASS_VOL,
+  HAT_VOL,
+  HAT_SOFT_VOL,
+  LEAD_VOL,
+  LEAD_SQ_VOL,
+  LEAD_OCT_VOL,
+  KICK_VOL,
+  SNARE_VOL,
+  SNARE_TENSE_VOL,
+} from './config/audio';
 
-export const BGM_VOLUME = 1.0;
-const DUCKED_VOLUME = 0.12;
-const FADE_IN_MS = 800;
-const FADE_OUT_MS = 250;
-const DUCK_MS = 600;
+export { BGM_TRACKS, type BgmTrack, type BgmChord } from './audio/tracks';
+export { BGM_VOLUME, PREVIEW_MS, TENSION_RELEASE_SEC } from './config/audio';
+
 const DUCK_RATIO = DUCKED_VOLUME / BGM_VOLUME;
-/** 일시정지 메뉴 미리듣기 재생 시간 */
-export const PREVIEW_MS = 900;
-/** 위험 해제 후 텐션 편곡을 유지하는 시간 */
-export const TENSION_RELEASE_SEC = 4;
-
-const SCHED_INTERVAL_MS = 100;
-const LOOKAHEAD_SEC = 0.35;
-const STEPS_PER_BAR = 16; // 16분음 그리드
-const BAR_COUNT = 4;
-
-const SKANK_VOL = 0.06;
-const ARP_VOL = 0.06;
-const ARP_TENSE_VOL = 0.09;
-const BASS_VOL = 0.1;
-const HAT_VOL = 0.025;
-const HAT_SOFT_VOL = 0.018;
-const LEAD_VOL = 0.09;
-const LEAD_SQ_VOL = 0.03;
-const LEAD_OCT_VOL = 0.035;
-const KICK_VOL = 0.14;
-const SNARE_VOL = 0.07;
-const SNARE_TENSE_VOL = 0.09;
 
 export function midiFreq(m: number): number {
   return 440 * Math.pow(2, (m - 69) / 12);
 }
 
-export interface BgmChord {
-  /** 3화음 (midi) */
-  tones: [number, number, number];
-  /** 베이스 (midi) */
-  bass: number;
-}
-
-export interface BgmTrack {
-  name: string;
-  bpm: number;
-  bars: [BgmChord, BgmChord, BgmChord, BgmChord];
-  /** 16스텝 아르페지오 (화음톤 0~2 + 옥타브업 3). 평상시엔 짝수 스텝만 연주 */
-  arp: number[];
-  /** 리드 멜로디 (8분음 × 4마디 = 32슬롯, midi·null=쉼표) */
-  lead: (number | null)[];
-  /** 베이스 그루브 (8분음 8슬롯, 코드 베이스 기준 반음 오프셋) */
-  groove: number[];
-}
-
-export const BGM_TRACKS: BgmTrack[] = [
-  {
-    name: '아침 산책',
-    bpm: 124,
-    bars: [
-      { tones: [60, 64, 67], bass: 36 },
-      { tones: [55, 59, 62], bass: 31 },
-      { tones: [57, 60, 64], bass: 33 },
-      { tones: [53, 57, 60], bass: 29 },
-    ],
-    arp: [0, 1, 1, 2, 2, 3, 3, 2, 2, 1, 1, 2, 2, 3, 3, 2],
-    lead: [
-      76, null, 79, null, 81, 79, 76, null,
-      74, null, 79, null, 83, 79, 74, null,
-      76, null, 74, 76, null, 72, null, null,
-      77, null, 81, null, 79, 77, 76, null,
-    ],
-    groove: [0, 0, 12, 0, 0, 12, 0, 7],
-  },
-  {
-    name: '노을',
-    bpm: 128,
-    bars: [
-      { tones: [55, 59, 62], bass: 31 },
-      { tones: [62, 66, 69], bass: 38 },
-      { tones: [64, 67, 71], bass: 40 },
-      { tones: [60, 64, 67], bass: 36 },
-    ],
-    arp: [2, 1, 1, 0, 0, 1, 1, 2, 2, 3, 3, 2, 2, 1, 1, 0],
-    lead: [
-      79, null, 83, null, 86, 83, 79, null,
-      81, null, 79, 76, null, 74, null, null,
-      83, null, 81, 79, null, 76, null, null,
-      76, null, 79, null, 84, 79, 76, null,
-    ],
-    groove: [0, 12, 0, 0, 7, 0, 12, 0],
-  },
-  {
-    name: '소풍',
-    bpm: 132,
-    bars: [
-      { tones: [60, 64, 67], bass: 36 },
-      { tones: [53, 57, 60], bass: 29 },
-      { tones: [55, 59, 62], bass: 31 },
-      { tones: [57, 60, 64], bass: 33 },
-    ],
-    arp: [0, 1, 2, 3, 1, 2, 3, 2, 2, 1, 0, 1, 1, 0, 2, 3],
-    lead: [
-      72, 76, 79, null, 81, null, 79, 76,
-      77, 79, 81, null, 84, null, 81, 79,
-      74, null, 79, 83, null, 79, 74, null,
-      76, null, 81, null, 79, 76, 74, null,
-    ],
-    groove: [0, 0, 12, 12, 0, 0, 7, 12],
-  },
-];
-
 interface BgmPlayer {
   ctx: AudioContext;
   master: GainNode;
-  noiseBuf: AudioBuffer | null;
   timer: ReturnType<typeof setInterval> | null;
   playing: boolean;
   step: number;
@@ -162,7 +88,6 @@ export function ensureBgm(): BgmPlayer | null {
     const p: BgmPlayer = {
       ctx,
       master,
-      noiseBuf: null,
       timer: null,
       playing: false,
       step: 0,
@@ -228,37 +153,7 @@ function toneAt(
   attack = 0.02,
   freqEnd?: number,
 ): void {
-  try {
-    const o = p.ctx.createOscillator();
-    const g = p.ctx.createGain();
-    o.type = type;
-    o.frequency.setValueAtTime(freq, t0);
-    if (freqEnd !== undefined) o.frequency.exponentialRampToValueAtTime(freqEnd, t0 + dur);
-    g.gain.setValueAtTime(0.0001, t0);
-    g.gain.exponentialRampToValueAtTime(vol, t0 + attack);
-    g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
-    o.connect(g);
-    g.connect(p.master);
-    o.start(t0);
-    o.stop(t0 + dur + 0.05);
-  } catch {
-    /* 오디오 미지원 환경 무시 */
-  }
-}
-
-function ensureNoise(p: BgmPlayer): AudioBuffer | null {
-  try {
-    if (!p.noiseBuf) {
-      const len = Math.max(1, Math.floor(p.ctx.sampleRate * 1));
-      const buf = p.ctx.createBuffer(1, len, p.ctx.sampleRate);
-      const d = buf.getChannelData(0);
-      for (let i = 0; i < len; i++) d[i] = Math.random() * 2 - 1;
-      p.noiseBuf = buf;
-    }
-    return p.noiseBuf;
-  } catch {
-    return null;
-  }
+  playTone(p.ctx, p.master, { freq, freqEnd, type, dur, vol, attack, at: t0 });
 }
 
 function noiseHit(
@@ -269,46 +164,26 @@ function noiseHit(
   type: BiquadFilterType,
   filterFreq: number,
 ): void {
-  const buf = ensureNoise(p);
-  if (!buf) return;
-  try {
-    const src = p.ctx.createBufferSource();
-    src.buffer = buf;
-    src.loop = true;
-    const f = p.ctx.createBiquadFilter();
-    f.type = type;
-    f.frequency.value = filterFreq;
-    const g = p.ctx.createGain();
-    g.gain.setValueAtTime(0.0001, t0);
-    g.gain.exponentialRampToValueAtTime(vol, t0 + 0.005);
-    g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
-    src.connect(f);
-    f.connect(g);
-    g.connect(p.master);
-    src.start(t0);
-    src.stop(t0 + dur + 0.05);
-  } catch {
-    /* 오디오 미지원 환경 무시 */
-  }
+  playNoise(p.ctx, p.master, {
+    dur,
+    vol,
+    filterType: type,
+    filterFreq,
+    attack: 0.005,
+    at: t0,
+  });
 }
 
 function kickAt(p: BgmPlayer, t0: number): void {
-  try {
-    const o = p.ctx.createOscillator();
-    const g = p.ctx.createGain();
-    o.type = 'sine';
-    o.frequency.setValueAtTime(160, t0);
-    o.frequency.exponentialRampToValueAtTime(45, t0 + 0.1);
-    g.gain.setValueAtTime(0.0001, t0);
-    g.gain.exponentialRampToValueAtTime(KICK_VOL, t0 + 0.005);
-    g.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.12);
-    o.connect(g);
-    g.connect(p.master);
-    o.start(t0);
-    o.stop(t0 + 0.17);
-  } catch {
-    /* 오디오 미지원 환경 무시 */
-  }
+  playTone(p.ctx, p.master, {
+    freq: 160,
+    freqEnd: 45,
+    type: 'sine',
+    dur: 0.12,
+    vol: KICK_VOL,
+    attack: 0.005,
+    at: t0,
+  });
 }
 
 function snareAt(p: BgmPlayer, t0: number, tense: boolean): void {
@@ -387,6 +262,11 @@ function startScheduler(p: BgmPlayer): void {
   if (p.pending !== null) {
     p.track = p.pending;
     p.pending = null;
+  }
+  if (p.ctx.state === 'suspended') {
+    // 제스처 직후 호출되는 경우가 많아 여기서 깨우면 즉시 재생된다.
+    // 실패해도 tick이 100ms마다 재시도하므로 안전망은 유지됨.
+    void p.ctx.resume().catch(() => {});
   }
   if (p.timer !== null) {
     p.playing = true;

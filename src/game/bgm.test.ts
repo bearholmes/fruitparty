@@ -420,4 +420,60 @@ describe('bgm', () => {
     expect(ensureBgm()).toBe(p);
     expect(FakeCtx.instances.length).toBe(n);
   });
+
+  it('게임오버 후 다시 시작하면 BGM이 재개된다', () => {
+    syncBgm();
+    vi.advanceTimersByTime(1000);
+    expect(player().playing).toBe(true);
+    useGameStore.getState().gameOver();
+    syncBgm(); // 구독이 호출
+    vi.advanceTimersByTime(500);
+    expect(player().playing).toBe(false);
+    useGameStore.getState().reset(1);
+    syncBgm(); // 구독이 호출
+    expect(player().playing).toBe(true);
+    const n = fx().oscs.length;
+    for (let i = 0; i < 5; i++) step(0.2); // 오디오 시계도 함께 흘려보냄
+    expect(masterVol()).toBe(BGM_VOLUME);
+    expect(fx().oscs.length).toBeGreaterThan(n);
+  });
+
+  it('페이드아웃 중 다시 시작해도 BGM이 끊기지 않는다', () => {
+    syncBgm();
+    vi.advanceTimersByTime(1000);
+    useGameStore.getState().gameOver();
+    syncBgm();
+    vi.advanceTimersByTime(100); // 페이드아웃 진행 중
+    expect(player().playing).toBe(true);
+    useGameStore.getState().reset(1);
+    syncBgm();
+    vi.advanceTimersByTime(1000);
+    expect(player().playing).toBe(true);
+    expect(masterVol()).toBe(BGM_VOLUME);
+  });
+
+  it('플레이 중 다시 시작하면 BGM이 계속 재생된다', () => {
+    syncBgm();
+    vi.advanceTimersByTime(1000);
+    useGameStore.getState().reset(1);
+    syncBgm();
+    expect(player().playing).toBe(true);
+    const n = fx().oscs.length;
+    step(0.5);
+    expect(fx().oscs.length).toBeGreaterThan(n);
+  });
+
+  it('일시정지 후 다시 시작하면 BGM이 재개된다', () => {
+    syncBgm();
+    vi.advanceTimersByTime(1000);
+    useGameStore.getState().setPaused(true);
+    syncBgm();
+    vi.advanceTimersByTime(500);
+    expect(player().playing).toBe(false);
+    useGameStore.getState().reset(1);
+    syncBgm();
+    vi.advanceTimersByTime(1000);
+    expect(player().playing).toBe(true);
+    expect(masterVol()).toBe(BGM_VOLUME);
+  });
 });

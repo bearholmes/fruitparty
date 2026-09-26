@@ -1,10 +1,19 @@
 import { useCallback, useEffect, useMemo, useRef } from 'react';
-import { Engine, Bodies, Body, Events, Composite } from 'matter-js';
-import { FRUITS, MAX_LEVEL, loadSprites, makeSprites, randDrop, randFeverDrop } from './art';
+import { Engine, Body, Events, Composite } from 'matter-js';
+import { FRUITS, MAX_LEVEL, randDrop, randFeverDrop } from './fruits';
+import { makeSprites, loadSprites, fruitImageUrl } from './sprites';
 import { useGameStore } from './store';
 import { syncBgm, duckBgm, reshuffleBgm, resetTension } from './bgm';
 import { sfx } from './sfx';
 import { fixedSteps, STEP_MS } from './timing';
+import { createFruitBody, createWalls, collectFruitBodies, type FruitBody } from './physics/bodies';
+import { mergeScore } from './physics/scoring';
+import { ContactTracker } from './physics/contacts';
+import { updateOverflow } from './physics/overflow';
+import { createStaticLayer } from './render/staticLayer';
+import { comboStyle, mergeFont, dangerLabelWidth, DANGER_FONT, FEVER_SPARKS } from './render/fx';
+import { drawFruit } from './render/fruitView';
+import { attachGameInput, clientXToBoard } from './input';
 import {
   BOARD_W,
   BOARD_H,
@@ -21,8 +30,19 @@ import {
   EVO_TOAST_MIN_LEVEL,
   DANGER_SHAKE_MAX,
   DANGER_CLEAR_RESET_SEC,
-  FRUIT_RESTITUTION,
   MERGE_DELAY_SEC,
+  GRAVITY_Y,
+  DROP_FRICTION,
+  MERGE_FRICTION,
+  DROP_INITIAL_VY,
+  MERGE_SPAWN_FLOOR_PAD,
+  KEY_MOVE_STEP,
+  BUTTON_MOVE_STEP,
+  SHAKE_VX_MIN,
+  SHAKE_VX_VAR,
+  SHAKE_VY_MIN,
+  SHAKE_VY_VAR,
+  SHAKE_SPIN,
   FEVER_DURATION_SEC,
   FEVER_SCORE_MULT,
   FEVER_DROP_COOLDOWN_MS,
@@ -33,9 +53,6 @@ import {
   FEVER_SHAKE_MULT,
   FEVER_SHAKE_COOLDOWN_MS,
 } from './constants';
-
-/** 과일 식별용 커스텀 필드를 단 Matter 바디 */
-type FruitBody = Body & { fruitLevel?: number; merged?: boolean };
 
 interface MergeAnim {
   x: number;
@@ -50,12 +67,6 @@ interface PopFx {
   x: number;
   y: number;
   lv: number;
-  t: number;
-}
-
-interface ContactPair {
-  a: FruitBody;
-  b: FruitBody;
   t: number;
 }
 
@@ -74,7 +85,8 @@ interface MutableGame {
   combo: number;
   comboTimer: number;
   overTime: Map<number, number>;
-  contactT: Map<string, ContactPair>;
+  tracker: ContactTracker<FruitBody>;
+  bodies: FruitBody[];
   dangerT: number;
   dangerActive: boolean;
   dangerClearT: number;
@@ -100,7 +112,8 @@ function createMutable(): MutableGame {
     combo: 0,
     comboTimer: 0,
     overTime: new Map(),
-    contactT: new Map(),
+    tracker: new ContactTracker(),
+    bodies: [],
     dangerT: 0,
     dangerActive: false,
     dangerClearT: 0,
@@ -116,6 +129,28 @@ function createMutable(): MutableGame {
   };
 }
 
+/** 재시작 시 뮤터블 전체를 한 곳에서 리셋 (필드 누락 방지) */
+function resetMutable(st: MutableGame): void {
+  st.combo = 0;
+  st.comboTimer = 0;
+  st.physicsRemainderMs = 0;
+  st.over = false;
+  st.canDrop = true;
+  st.overTime.clear();
+  st.tracker.clear();
+  st.bodies.length = 0;
+  st.dangerT = 0;
+  st.dangerActive = false;
+  st.dangerClearT = 0;
+  st.feverT = 0;
+  st.mergeAnim = [];
+  st.pops = [];
+  st.dropTimer = clearTimer(st.dropTimer);
+  st.shakeTimer = clearTimer(st.shakeTimer);
+  st.current = randDrop();
+  st.next = randDrop();
+}
+
 function clearTimer(t: number | null): null {
   if (t !== null) clearTimeout(t);
   return null;
@@ -126,20 +161,14 @@ function clampDropX(x: number, level: number): number {
   return Math.max(WALL + radius, Math.min(BOARD_W - WALL - radius, x));
 }
 
-/** 콤보가 높을수록 합체 점수 텍스트를 크게·뜨겁게 */
-function comboStyle(combo: number): { size: number; color: string } {
-  return {
-    size: Math.min(34, 20 + combo * 2),
-    color: combo >= 6 ? '#e63946' : combo >= 3 ? '#ff6b35' : '#3d2b1f',
-  };
-}
-
-/* 수박게임 엔진 훅 — Matter 물리 + 스프라이트 렌더.
+/* 수박게임 엔진 훅 — Matter 물리 + 스프라이트 렌더 오케스트레이터.
+   규칙은 physics/, 렌더는 render/, 입력은 input.ts가 담당.
    UI 상태는 zustand 스토어가 소유, 루프·충돌 콜백에선 getState()로 접근.
    반환은 canvas ref와 액션만 (점수 등은 App에서 스토어 셀렉터로 구독). */
 export function useSuika() {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const nextCanvasRef = useRef<HTMLCanvasElement | null>(null);
+  const nextCtxRef = useRef<CanvasRenderingContext2D | null>(null);
   const sprites = useMemo(() => (typeof document === 'undefined' ? [] : makeSprites()), []);
 
   const g = useRef<MutableGame | null>(null);
@@ -158,7 +187,8 @@ export function useSuika() {
     (lv: number) => {
       const cv = nextCanvasRef.current;
       if (!cv) return;
-      const c = cv.getContext('2d');
+      if (!nextCtxRef.current) nextCtxRef.current = cv.getContext('2d');
+      const c = nextCtxRef.current;
       if (!c) return;
       const s = sprites[lv];
       c.clearRect(0, 0, 96, 96);
@@ -170,11 +200,12 @@ export function useSuika() {
   );
 
   useEffect(() => {
+    // 도감 썸네일은 원본 webp URL로 (대형 스프라이트 toDataURL 변환 없이)
+    useGameStore.getState().setEvoUrls(FRUITS.map((_, i) => fruitImageUrl(i)));
     let active = true;
     loadSprites(sprites)
       .then(() => {
         if (!active) return;
-        useGameStore.getState().setEvoUrls(sprites.map((s) => s.cv.toDataURL()));
         drawNext(g.current?.next ?? 0);
       })
       .catch((error: unknown) => console.error(error));
@@ -194,16 +225,14 @@ export function useSuika() {
     const store = useGameStore.getState;
 
     const engine = Engine.create({ enableSleeping: false });
-    engine.gravity.y = 1.05;
+    engine.gravity.y = GRAVITY_Y;
     st.engine = engine;
     const world = engine.world;
+    Composite.add(world, createWalls());
 
-    const opt = { isStatic: true, friction: 0.4, restitution: 0 };
-    Composite.add(world, [
-      Bodies.rectangle(BOARD_W / 2, BOARD_H - WALL / 2 + 8, BOARD_W, WALL + 16, opt),
-      Bodies.rectangle(WALL / 2 - 8, BOARD_H / 2, WALL + 16, BOARD_H, opt),
-      Bodies.rectangle(BOARD_W - WALL / 2 + 8, BOARD_H / 2, WALL + 16, BOARD_H, opt),
-    ]);
+    // 정적 배경은 한 번 그려두고 매 프레임 합성 (평상시/피버 2종)
+    const normalLayer = createStaticLayer(false);
+    const feverLayer = createStaticLayer(true);
 
     const pop = (x: number, y: number, lv: number): void => {
       st.pops.push({ x, y, lv, t: 0 });
@@ -220,8 +249,6 @@ export function useSuika() {
       setTimeout(() => holder.classList.remove('combo-flash'), 350);
     };
 
-    /* 같은 레벨끼리 일정 시간 맞닿아 있어야 합체 — 스치는 접촉은 무시해
-       난사해도 자동 정리되지 않고 보드가 차오르게 함 */
     const doMerge = (a: FruitBody, b: FruitBody): void => {
       if (a.merged || b.merged) return;
       const lv = a.fruitLevel ?? 0;
@@ -232,30 +259,28 @@ export function useSuika() {
       Composite.remove(world, b);
       st.overTime.delete(a.id);
       st.overTime.delete(b.id);
-      for (const [key, p] of st.contactT) {
-        if (p.a === a || p.b === a || p.a === b || p.b === b) st.contactT.delete(key);
-      }
+      st.tracker.removeBody(a);
+      st.tracker.removeBody(b);
       if (lv === MAX_LEVEL) {
         /* 단감 합체 보상 — 주변 낮은 과일을 점수로 전환해 공간을 확보하고 피버 시작 */
         let blastPts = 0;
         let swept = 0;
-        for (const b of Composite.allBodies(world)) {
-          const blv = (b as FruitBody).fruitLevel;
-          if (b.isStatic || blv === undefined || (b as FruitBody).merged) continue;
+        for (const bd of Composite.allBodies(world)) {
+          const fb = bd as FruitBody;
+          const blv = fb.fruitLevel;
+          if (bd.isStatic || blv === undefined || fb.merged) continue;
           if (blv > FEVER_BLAST_MAX_LEVEL) continue;
-          const dx = b.position.x - mx;
-          const dy = b.position.y - my;
+          const dx = bd.position.x - mx;
+          const dy = bd.position.y - my;
           if (dx * dx + dy * dy > FEVER_BLAST_RADIUS * FEVER_BLAST_RADIUS) continue;
-          (b as FruitBody).merged = true;
-          Composite.remove(world, b);
-          st.overTime.delete(b.id);
-          for (const [key, p] of st.contactT) {
-            if (p.a === b || p.b === b) st.contactT.delete(key);
-          }
-          const fpts = Math.round(FRUITS[blv].score * (1 + st.combo * 0.5) * FEVER_SCORE_MULT);
+          fb.merged = true;
+          Composite.remove(world, bd);
+          st.overTime.delete(bd.id);
+          st.tracker.removeBody(fb);
+          const fpts = mergeScore(blv, st.combo, true);
           blastPts += fpts;
-          pop(b.position.x, b.position.y, blv);
-          st.mergeAnim.push({ x: b.position.x, y: b.position.y, t: 0, text: `+${fpts}`, size: 18, color: '#b35a00' });
+          pop(bd.position.x, bd.position.y, blv);
+          st.mergeAnim.push({ x: bd.position.x, y: bd.position.y, t: 0, text: `+${fpts}`, size: 18, color: '#b35a00' });
           swept++;
         }
         const total = FINAL_BONUS + blastPts;
@@ -294,18 +319,11 @@ export function useSuika() {
         return;
       }
       const nl = lv + 1;
-      const body = Bodies.circle(mx, Math.min(my, BOARD_H - 120), FRUITS[nl].r, {
-        restitution: FRUIT_RESTITUTION,
-        friction: 0.45,
-        frictionAir: 0.008,
-        density: 0.0012 + nl * 0.00025,
-      }) as FruitBody;
-      Body.scale(body, FRUITS[nl].hitbox.x, FRUITS[nl].hitbox.y);
-      body.fruitLevel = nl;
+      const body = createFruitBody(mx, Math.min(my, BOARD_H - MERGE_SPAWN_FLOOR_PAD), nl, MERGE_FRICTION);
       Composite.add(world, body);
       pop(mx, my, nl);
       const fever = st.feverT > 0;
-      const pts = Math.round(FRUITS[nl].score * (1 + st.combo * 0.5) * (fever ? FEVER_SCORE_MULT : 1));
+      const pts = mergeScore(nl, st.combo, fever);
       store().addScore(pts);
       st.combo++;
       store().setCombo(st.combo);
@@ -318,65 +336,37 @@ export function useSuika() {
 
     const onActive = (e: CollisionEvent): void => {
       if (st.over || store().paused) return;
-      const seen = new Set<string>();
       for (const pair of e.pairs) {
         const a = pair.bodyA as FruitBody;
         const b = pair.bodyB as FruitBody;
         if (a.fruitLevel === undefined || b.fruitLevel === undefined) continue;
         if (a.fruitLevel !== b.fruitLevel) continue;
         if (a.merged || b.merged) continue;
-        const key = a.id < b.id ? `${a.id}:${b.id}` : `${b.id}:${a.id}`;
-        seen.add(key);
-        const prev = st.contactT.get(key);
-        /* Engine.update 고정 스텝(1000/60ms)과 동일한 누적 단위 */
-        st.contactT.set(key, { a, b, t: (prev?.t ?? 0) + 1 / 60 });
-      }
-      for (const key of [...st.contactT.keys()]) {
-        if (!seen.has(key)) st.contactT.delete(key);
+        /* Engine.update 고정 스텝(STEP_MS)과 동일한 누적 단위 */
+        st.tracker.touch(a, b, STEP_MS / 1000);
       }
       const need = st.feverT > 0 ? FEVER_MERGE_DELAY_SEC : MERGE_DELAY_SEC;
-      for (const { a, b, t } of st.contactT.values()) {
-        if (t >= need) doMerge(a, b);
+      for (const { a, b } of st.tracker.due(need)) {
+        doMerge(a, b);
       }
     };
     Events.on(engine, 'collisionActive', onActive);
 
-    const drawFruit = (x: number, y: number, lv: number, angle = 0, ghost = false): void => {
-      const s = sprites[lv];
-      ctx.save();
-      ctx.globalAlpha = ghost ? 0.92 : 1;
-      ctx.translate(x, y);
-      ctx.rotate(angle);
-      ctx.drawImage(s.cv, -s.cx, -s.cy - FRUITS[lv].r * FRUITS[lv].artOffsetY, s.S, s.S);
-      ctx.restore();
-    };
-
-    const checkOverflow = (dt: number): void => {
-      const bodies = Composite.allBodies(world).filter(
-        (b) => !b.isStatic && (b as FruitBody).fruitLevel !== undefined,
+    const checkOverflow = (bodies: FruitBody[], dt: number): void => {
+      const { maxT, overflowed } = updateOverflow(
+        bodies,
+        (b) => (b as FruitBody).fruitLevel ?? 0,
+        st.overTime,
+        dt,
       );
-      let maxT = 0;
-      for (const b of bodies) {
-        const lv = (b as FruitBody).fruitLevel ?? 0;
-        if (
-          b.position.y - FRUITS[lv].r * FRUITS[lv].hitbox.y < DEADLINE_Y &&
-          Math.abs(b.velocity.y) < 0.35
-        ) {
-          const t = (st.overTime.get(b.id) ?? 0) + dt;
-          st.overTime.set(b.id, t);
-          maxT = Math.max(maxT, t);
-          if (t > OVER_LIMIT_SEC) {
-            st.over = true;
-            st.feverT = 0;
-            store().setFever(false, 0);
-            store().gameOver();
-            sfx.gameOver();
-            if (store().isRecord) setTimeout(() => sfx.fanfare(), 700);
-            return;
-          }
-        } else {
-          st.overTime.set(b.id, 0);
-        }
+      if (overflowed) {
+        st.over = true;
+        st.feverT = 0;
+        store().setFever(false, 0);
+        store().gameOver();
+        sfx.gameOver();
+        if (store().isRecord) setTimeout(() => sfx.fanfare(), 700);
+        return;
       }
       st.dangerT = maxT;
       const active = maxT > DANGER_AFTER_SEC;
@@ -398,21 +388,11 @@ export function useSuika() {
       }
     };
 
-    const draw = (t: number): void => {
+    const draw = (t: number, bodies: FruitBody[]): void => {
       ctx.clearRect(0, 0, BOARD_W, BOARD_H);
-      ctx.fillStyle = st.feverT > 0 ? '#fff3d3' : '#eef5e9';
-      ctx.fillRect(0, 0, BOARD_W, BOARD_H);
-      ctx.fillStyle = '#376f55';
-      ctx.fillRect(0, 0, WALL, BOARD_H);
-      ctx.fillRect(BOARD_W - WALL, 0, WALL, BOARD_H);
-      ctx.fillRect(0, BOARD_H - WALL, BOARD_W, WALL);
-      ctx.fillStyle = '#75a384';
-      for (let y = 10; y < BOARD_H; y += 26) {
-        ctx.fillRect(4, y, 6, 12);
-        ctx.fillRect(BOARD_W - 10, y, 6, 12);
-      }
+      ctx.drawImage(st.feverT > 0 ? feverLayer : normalLayer, 0, 0);
 
-      const danger = [...st.overTime.values()].some((v) => v > DANGER_AFTER_SEC);
+      const danger = st.dangerT > DANGER_AFTER_SEC;
       ctx.save();
       ctx.strokeStyle = danger ? '#d94e4e' : '#a8bea8';
       ctx.lineWidth = danger ? 3 : 2;
@@ -435,13 +415,13 @@ export function useSuika() {
         ctx.lineTo(st.dropX, BOARD_H - WALL);
         ctx.stroke();
         ctx.restore();
-        drawFruit(st.dropX, DROP_Y, st.current, 0, true);
+        drawFruit(ctx, sprites, st.dropX, DROP_Y, st.current, 0, true);
       }
 
-      for (const b of Composite.allBodies(world)) {
-        const lv = (b as FruitBody).fruitLevel;
-        if (lv === undefined || b.isStatic) continue;
-        drawFruit(b.position.x, b.position.y, lv, b.angle, false);
+      for (const b of bodies) {
+        const lv = b.fruitLevel;
+        if (lv === undefined) continue;
+        drawFruit(ctx, sprites, b.position.x, b.position.y, lv, b.angle, false);
       }
 
       st.mergeAnim = st.mergeAnim.filter((p) => p.t < 1);
@@ -449,7 +429,7 @@ export function useSuika() {
         p.t += 0.03;
         ctx.save();
         ctx.globalAlpha = 1 - p.t;
-        ctx.font = `800 ${p.size}px Roboto, Pretendard, sans-serif`;
+        ctx.font = mergeFont(p.size);
         ctx.textAlign = 'center';
         ctx.fillStyle = p.color;
         ctx.fillText(p.text, p.x, p.y - p.t * 46);
@@ -473,16 +453,13 @@ export function useSuika() {
         ctx.save();
         ctx.strokeStyle = '#f6a817';
         ctx.lineWidth = 2;
-        for (let i = 0; i < 16; i++) {
-          const sx = WALL + 24 + ((i * 137) % (BOARD_W - WALL * 2 - 48));
-          const sy = 56 + ((i * 211) % (BOARD_H - 160));
-          ctx.globalAlpha = Math.max(0.1, 0.35 + 0.3 * Math.sin(t * 7 + i * 2.4));
-          const r = 3 + (i % 3);
+        for (const s of FEVER_SPARKS) {
+          ctx.globalAlpha = Math.max(0.1, 0.35 + 0.3 * Math.sin(t * 7 + s.phase));
           ctx.beginPath();
-          ctx.moveTo(sx - r, sy);
-          ctx.lineTo(sx + r, sy);
-          ctx.moveTo(sx, sy - r);
-          ctx.lineTo(sx, sy + r);
+          ctx.moveTo(s.x - s.r, s.y);
+          ctx.lineTo(s.x + s.r, s.y);
+          ctx.moveTo(s.x, s.y - s.r);
+          ctx.lineTo(s.x, s.y + s.r);
           ctx.stroke();
         }
         ctx.restore();
@@ -492,8 +469,8 @@ export function useSuika() {
         const remain = Math.max(0, OVER_LIMIT_SEC - st.dangerT).toFixed(1);
         const label = `위험! ${remain}초`;
         ctx.save();
-        ctx.font = '800 26px Roboto, Pretendard, sans-serif';
-        const w = ctx.measureText(label).width + 36;
+        ctx.font = DANGER_FONT;
+        const w = dangerLabelWidth(ctx, label);
         ctx.fillStyle = 'rgba(230,57,70,.93)';
         ctx.beginPath();
         ctx.roundRect(BOARD_W / 2 - w / 2, 168, w, 44, 22);
@@ -515,7 +492,6 @@ export function useSuika() {
         st.physicsRemainderMs = timing.remainderMs;
         for (let step = 0; step < timing.steps; step++) {
           Engine.update(engine, STEP_MS);
-          if (!st.over) checkOverflow(STEP_MS / 1000);
           if (st.feverT > 0) {
             st.feverT -= STEP_MS / 1000;
             if (st.feverT <= 0) {
@@ -535,78 +511,51 @@ export function useSuika() {
             }
           }
         }
+        /* 바디 목록은 프레임당 1회만 수집해 오버플로우·렌더가 공유.
+           스텝마다 검사하던 것을 프레임 단위로 합침 (1프레임 이내 지연) */
+        collectFruitBodies(world, st.bodies);
+        if (!st.over) checkOverflow(st.bodies, (timing.steps * STEP_MS) / 1000);
       } else {
         st.physicsRemainderMs = 0;
+        collectFruitBodies(world, st.bodies);
       }
-      draw(now / 1000);
+      draw(now / 1000, st.bodies);
     };
 
-    /* ---- 입력 ---- */
-    const setX = (clientX: number): void => {
-      const r = canvas.getBoundingClientRect();
-      const px = ((clientX - r.left) / r.width) * BOARD_W;
-      st.dropX = clampDropX(px, st.current);
+    /* ---- 입력 (input.ts가 리스너 소유, 판단은 ref 콜백에 위임) ---- */
+    const setDropX = (clientX: number): void => {
+      st.dropX = clampDropX(clientXToBoard(canvas, clientX), st.current);
     };
-    const onMove = (e: MouseEvent): void => {
-      setX(e.clientX);
-    };
-    const onDown = (e: MouseEvent): void => {
-      if (!store().started) {
-        startRef.current();
-        return;
-      }
-      setX(e.clientX);
-      dropRef.current();
-    };
-    const onTouchStart = (e: TouchEvent): void => {
-      const t = e.touches[0];
-      if (t) setX(t.clientX);
-    };
-    const onTouchMove = (e: TouchEvent): void => {
-      const t = e.touches[0];
-      if (t) setX(t.clientX);
-      e.preventDefault();
-    };
-    const onTouchEnd = (): void => {
+    const tap = (): void => {
       if (!store().started) startRef.current();
       else dropRef.current();
     };
-    const onKey = (e: KeyboardEvent): void => {
-      if (e.target instanceof HTMLElement && e.target.closest('input, textarea, [contenteditable="true"]')) return;
-      const step = 14;
+    const hide = (): void => {
+      if (!st.over && store().started) store().setPaused(true);
+    };
+    const detachInput = attachGameInput(canvas, {
+      setDropX,
+      tap,
+      nudge: (dir) => nudgeRef.current(dir),
+      shake: () => shakeRef.current(),
+      restart: () => restartRef.current(),
+      togglePause: () => pauseRef.current(),
+      hide,
+    });
+    /* BGM 관련 필드만 바뀌었을 때 sync (점수·콤보 갱신엔 반응하지 않음) */
+    const unsubBgm = useGameStore.subscribe((s, prev) => {
       if (
-        e.code === 'ArrowLeft' ||
-        e.code === 'ArrowRight' ||
-        e.code === 'ArrowUp' ||
-        e.code === 'ArrowDown' ||
-        e.code === 'Space'
-      )
-        e.preventDefault();
-      if (e.code === 'ArrowLeft')
-        st.dropX = clampDropX(st.dropX - step, st.current);
-      if (e.code === 'ArrowRight')
-        st.dropX = clampDropX(st.dropX + step, st.current);
-      if (e.code === 'Space' || e.key === 'Enter') {
-        (document.activeElement as HTMLElement | null)?.blur?.();
-        if (!store().started) startRef.current();
-        else dropRef.current();
+        s.soundOn !== prev.soundOn ||
+        s.bgmVolume !== prev.bgmVolume ||
+        s.over !== prev.over ||
+        s.paused !== prev.paused ||
+        s.started !== prev.started ||
+        s.danger !== prev.danger ||
+        s.feverActive !== prev.feverActive
+      ) {
+        syncBgm();
       }
-      if (e.key === 'r' || e.key === 'R') restartRef.current();
-      if (e.code === 'ArrowUp' || e.code === 'ArrowDown' || e.code === 'KeyS') shakeRef.current();
-      if (e.code === 'KeyP' || e.code === 'Escape') pauseRef.current();
-    };
-    const onVis = (): void => {
-      if (document.hidden && !st.over && store().started) store().setPaused(true);
-    };
-
-    canvas.addEventListener('mousemove', onMove);
-    canvas.addEventListener('mousedown', onDown);
-    canvas.addEventListener('touchstart', onTouchStart, { passive: true });
-    canvas.addEventListener('touchmove', onTouchMove, { passive: false });
-    canvas.addEventListener('touchend', onTouchEnd);
-    window.addEventListener('keydown', onKey);
-    document.addEventListener('visibilitychange', onVis);
-    const unsubBgm = useGameStore.subscribe(syncBgm);
+    });
 
     drawNext(st.next);
     st.last = performance.now();
@@ -614,13 +563,7 @@ export function useSuika() {
 
     return () => {
       cancelAnimationFrame(st.raf);
-      canvas.removeEventListener('mousemove', onMove);
-      canvas.removeEventListener('mousedown', onDown);
-      canvas.removeEventListener('touchstart', onTouchStart);
-      canvas.removeEventListener('touchmove', onTouchMove);
-      canvas.removeEventListener('touchend', onTouchEnd);
-      window.removeEventListener('keydown', onKey);
-      document.removeEventListener('visibilitychange', onVis);
+      detachInput();
       unsubBgm();
       Events.off(engine, 'collisionActive', onActive);
       Engine.clear(engine);
@@ -636,15 +579,8 @@ export function useSuika() {
     const gs = useGameStore.getState();
     if (!st || !st.engine || !st.canDrop || st.over || gs.paused || !gs.started) return;
     st.dropX = clampDropX(st.dropX, st.current);
-    const body = Bodies.circle(st.dropX, DROP_Y, FRUITS[st.current].r, {
-      restitution: FRUIT_RESTITUTION,
-      friction: 0.5,
-      frictionAir: 0.008,
-      density: 0.0012 + st.current * 0.00025,
-    }) as FruitBody;
-    Body.scale(body, FRUITS[st.current].hitbox.x, FRUITS[st.current].hitbox.y);
-    body.fruitLevel = st.current;
-    Body.setVelocity(body, { x: 0, y: 2 });
+    const body = createFruitBody(st.dropX, DROP_Y, st.current, DROP_FRICTION);
+    Body.setVelocity(body, { x: 0, y: DROP_INITIAL_VY });
     Composite.add(st.engine.world, body);
     st.current = st.next;
     st.dropX = clampDropX(st.dropX, st.current);
@@ -675,18 +611,15 @@ export function useSuika() {
       }
       gs.setDangerShakeLeft(gs.dangerShakeLeft - 1);
     }
-    const bodies = Composite.allBodies(st.engine.world).filter(
-      (b) => !b.isStatic && (b as FruitBody).fruitLevel !== undefined,
-    );
-    if (bodies.length === 0) return;
+    if (st.bodies.length === 0) return;
     const power = fever ? FEVER_SHAKE_MULT : 1;
-    for (const b of bodies) {
+    for (const b of st.bodies) {
       const dir = Math.random() < 0.5 ? -1 : 1;
       Body.setVelocity(b, {
-        x: b.velocity.x + dir * (2.5 + Math.random() * 3.5) * power,
-        y: b.velocity.y - (1 + Math.random() * 2.5) * power,
+        x: b.velocity.x + dir * (SHAKE_VX_MIN + Math.random() * SHAKE_VX_VAR) * power,
+        y: b.velocity.y - (SHAKE_VY_MIN + Math.random() * SHAKE_VY_VAR) * power,
       });
-      Body.setAngularVelocity(b, b.angularVelocity + (Math.random() - 0.5) * 0.4 * power);
+      Body.setAngularVelocity(b, b.angularVelocity + (Math.random() - 0.5) * SHAKE_SPIN * power);
     }
     gs.setCanShake(false);
     st.shakeTimer = clearTimer(st.shakeTimer);
@@ -740,40 +673,32 @@ export function useSuika() {
         .filter((b) => !b.isStatic)
         .forEach((b) => Composite.remove(eng.world, b));
     }
-    st.combo = 0;
-    st.comboTimer = 0;
-    st.physicsRemainderMs = 0;
-    st.over = false;
-    st.canDrop = true;
-    st.overTime.clear();
-    st.contactT.clear();
-    st.dangerT = 0;
-    st.dangerActive = false;
-    st.dangerClearT = 0;
-    st.feverT = 0;
-    st.mergeAnim = [];
-    st.pops = [];
-    st.dropTimer = clearTimer(st.dropTimer);
-    st.shakeTimer = clearTimer(st.shakeTimer);
-    st.current = randDrop();
-    st.next = randDrop();
+    resetMutable(st);
     useGameStore.getState().reset(st.next);
     drawNext(st.next);
     sfx.ui();
     reshuffleBgm(); // 게임마다 다른 곡
     resetTension(); // 새 게임은 평상시 편곡으로
+    syncBgm(); // 구독에만 의존하지 않고 직접 동기화 (start/drop과 동일)
   }, [drawNext]);
   const restartRef = useRef(restart);
+
+  const nudge = useCallback((dir: -1 | 1) => {
+    const st = g.current;
+    if (!st) return;
+    st.dropX = clampDropX(st.dropX + dir * KEY_MOVE_STEP, st.current);
+  }, []);
+  const nudgeRef = useRef(nudge);
 
   const moveLeft = useCallback(() => {
     const st = g.current;
     if (!st) return;
-    st.dropX = clampDropX(st.dropX - 24, st.current);
+    st.dropX = clampDropX(st.dropX - BUTTON_MOVE_STEP, st.current);
   }, []);
   const moveRight = useCallback(() => {
     const st = g.current;
     if (!st) return;
-    st.dropX = clampDropX(st.dropX + 24, st.current);
+    st.dropX = clampDropX(st.dropX + BUTTON_MOVE_STEP, st.current);
   }, []);
 
   useEffect(() => {
@@ -782,7 +707,8 @@ export function useSuika() {
     startRef.current = start;
     pauseRef.current = togglePause;
     restartRef.current = restart;
-  }, [drop, shake, start, togglePause, restart]);
+    nudgeRef.current = nudge;
+  }, [drop, shake, start, togglePause, restart, nudge]);
 
   return {
     canvasRef,

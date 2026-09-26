@@ -43,6 +43,13 @@
       "when": 1790419051362,
       "tag": "0005_reset_leaderboard",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "6",
+      "when": 1790426637000,
+      "tag": "0006_leaderboard_indexes",
+      "breakpoints": true
     }
   ]
 }
