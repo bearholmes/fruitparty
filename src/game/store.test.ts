@@ -33,6 +33,8 @@ function freshState() {
     bgmVolume: 0.5,
     sfxVolume: 1,
     canShake: true,
+    feverActive: false,
+    feverLeft: 0,
   });
 }
 
@@ -263,5 +265,18 @@ describe('store', () => {
     s.setDanger(true);
     s.setDangerShakeLeft(3);
     expect(useGameStore.getState()).toMatchObject({ danger: true, dangerShakeLeft: 3 });
+  });
+
+  it('피버 상태를 세팅하고 reset하면 해제된다', () => {
+    const s = useGameStore.getState();
+    s.setFever(true, 30);
+    expect(useGameStore.getState()).toMatchObject({ feverActive: true, feverLeft: 30 });
+    s.setFever(true, 12);
+    expect(useGameStore.getState().feverLeft).toBe(12);
+    s.setFever(false, 0);
+    expect(useGameStore.getState()).toMatchObject({ feverActive: false, feverLeft: 0 });
+    s.setFever(true, 30);
+    s.reset(1);
+    expect(useGameStore.getState()).toMatchObject({ feverActive: false, feverLeft: 0 });
   });
 });

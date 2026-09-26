@@ -140,6 +140,11 @@ export const sfx = {
     );
     tone({ freq: 2093.0, dur: 0.3, vol: 0.04, delay: 0.44 });
   },
+  fever(): void {
+    [659.25, 783.99, 987.77, 1318.51].forEach((freq, i) =>
+      tone({ freq, dur: 0.14, vol: 0.14, delay: i * 0.09 }),
+    );
+  },
   ui(): void {
     tone({ freq: 660, dur: 0.07, vol: 0.07 });
   },

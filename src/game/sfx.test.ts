@@ -100,6 +100,7 @@ describe('sfx', () => {
       sfx.shake();
       sfx.gameOver();
       sfx.fanfare();
+      sfx.fever();
       sfx.ui();
     }).not.toThrow();
     expect(FakeCtx.instances).toHaveLength(0);

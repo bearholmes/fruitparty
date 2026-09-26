@@ -52,6 +52,8 @@ export interface GameState {
   bgmVolume: number;
   sfxVolume: number;
   canShake: boolean;
+  feverActive: boolean;
+  feverLeft: number;
   addScore: (n: number) => void;
   setCombo: (combo: number) => void;
   setNextLv: (nextLv: number) => void;
@@ -70,6 +72,7 @@ export interface GameState {
   setSfxVolume: (volume: number) => void;
   loadAudioSettings: () => void;
   setCanShake: (v: boolean) => void;
+  setFever: (active: boolean, left: number) => void;
   reset: (nextLv: number) => void;
 }
 
@@ -99,6 +102,8 @@ export const useGameStore = create<GameState>()((set, get) => ({
   bgmVolume: 0.5,
   sfxVolume: 1,
   canShake: true,
+  feverActive: false,
+  feverLeft: 0,
 
   addScore: (n) => {
     const score = get().score + Math.round(n);
@@ -202,6 +207,7 @@ export const useGameStore = create<GameState>()((set, get) => ({
     }
   },
   setCanShake: (canShake) => set({ canShake }),
+  setFever: (feverActive, feverLeft) => set({ feverActive, feverLeft }),
   reset: (nextLv) =>
     set({
       score: 0,
@@ -211,6 +217,8 @@ export const useGameStore = create<GameState>()((set, get) => ({
       paused: false,
       started: true,
       danger: false,
+      feverActive: false,
+      feverLeft: 0,
       dangerShakeLeft: DANGER_SHAKE_MAX,
       isRecord: false,
       pendingLeaderboard: false,

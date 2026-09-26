@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef } from 'react';
 import { Engine, Bodies, Body, Events, Composite } from 'matter-js';
-import { FRUITS, MAX_LEVEL, loadSprites, makeSprites, randDrop } from './art';
+import { FRUITS, MAX_LEVEL, loadSprites, makeSprites, randDrop, randFeverDrop } from './art';
 import { useGameStore } from './store';
 import { syncBgm, duckBgm, reshuffleBgm, resetTension } from './bgm';
 import { sfx } from './sfx';
@@ -22,6 +22,12 @@ import {
   DANGER_CLEAR_RESET_SEC,
   FRUIT_RESTITUTION,
   MERGE_DELAY_SEC,
+  FEVER_DURATION_SEC,
+  FEVER_SCORE_MULT,
+  FEVER_DROP_COOLDOWN_MS,
+  FEVER_COMBO_WINDOW_FRAMES,
+  FEVER_BLAST_RADIUS,
+  FEVER_BLAST_MAX_LEVEL,
 } from './constants';
 
 /** 과일 식별용 커스텀 필드를 단 Matter 바디 */
@@ -68,6 +74,7 @@ interface MutableGame {
   dangerT: number;
   dangerActive: boolean;
   dangerClearT: number;
+  feverT: number;
   mergeAnim: MergeAnim[];
   pops: PopFx[];
   raf: number;
@@ -92,6 +99,7 @@ function createMutable(): MutableGame {
     dangerT: 0,
     dangerActive: false,
     dangerClearT: 0,
+    feverT: 0,
     mergeAnim: [],
     pops: [],
     raf: 0,
@@ -217,22 +225,50 @@ export function useSuika() {
         if (p.a === a || p.b === a || p.a === b || p.b === b) st.contactT.delete(key);
       }
       if (lv === MAX_LEVEL) {
-        store().addScore(FINAL_BONUS);
+        /* 단감 합체 보상 — 주변 낮은 과일을 점수로 전환해 공간을 확보하고 피버 시작 */
+        let blastPts = 0;
+        let swept = 0;
+        for (const b of Composite.allBodies(world)) {
+          const blv = (b as FruitBody).fruitLevel;
+          if (b.isStatic || blv === undefined || (b as FruitBody).merged) continue;
+          if (blv > FEVER_BLAST_MAX_LEVEL) continue;
+          const dx = b.position.x - mx;
+          const dy = b.position.y - my;
+          if (dx * dx + dy * dy > FEVER_BLAST_RADIUS * FEVER_BLAST_RADIUS) continue;
+          (b as FruitBody).merged = true;
+          Composite.remove(world, b);
+          st.overTime.delete(b.id);
+          for (const [key, p] of st.contactT) {
+            if (p.a === b || p.b === b) st.contactT.delete(key);
+          }
+          blastPts += Math.round(FRUITS[blv].score * (1 + st.combo * 0.5) * FEVER_SCORE_MULT);
+          pop(b.position.x, b.position.y, blv);
+          swept++;
+        }
+        const total = FINAL_BONUS + blastPts;
+        store().addScore(total);
         st.mergeAnim.push({
           x: mx,
           y: my,
           t: 0,
-          text: `+${FINAL_BONUS}`,
+          text: `+${total}`,
           size: 30,
           color: '#e63946',
         });
         pop(mx, my, lv);
-        showToast(`💥 단감 폭발! +${FINAL_BONUS}`);
+        st.feverT = FEVER_DURATION_SEC;
+        store().setFever(true, FEVER_DURATION_SEC);
+        showToast(
+          swept > 0
+            ? `🔥 피버타임 ${FEVER_DURATION_SEC}초! 점수 ${FEVER_SCORE_MULT}배·${swept}개 정리!`
+            : `🔥 피버타임 ${FEVER_DURATION_SEC}초! 점수 ${FEVER_SCORE_MULT}배!`,
+        );
         st.combo++;
         store().setCombo(st.combo);
-        st.comboTimer = COMBO_WINDOW_FRAMES;
+        st.comboTimer = FEVER_COMBO_WINDOW_FRAMES;
         pulseCombo(st.combo);
         sfx.explosion();
+        sfx.fever();
         duckBgm();
         return;
       }
@@ -247,11 +283,12 @@ export function useSuika() {
       body.fruitLevel = nl;
       Composite.add(world, body);
       pop(mx, my, nl);
-      const pts = Math.round(FRUITS[nl].score * (1 + st.combo * 0.5));
+      const fever = st.feverT > 0;
+      const pts = Math.round(FRUITS[nl].score * (1 + st.combo * 0.5) * (fever ? FEVER_SCORE_MULT : 1));
       store().addScore(pts);
       st.combo++;
       store().setCombo(st.combo);
-      st.comboTimer = COMBO_WINDOW_FRAMES;
+      st.comboTimer = fever ? FEVER_COMBO_WINDOW_FRAMES : COMBO_WINDOW_FRAMES;
       st.mergeAnim.push({ x: mx, y: my, t: 0, text: `+${pts}`, ...comboStyle(st.combo) });
       sfx.merge(nl, st.combo);
       if (nl >= EVO_TOAST_MIN_LEVEL) showToast(`🎉 ${FRUITS[nl].name} 탄생!`);
@@ -308,6 +345,8 @@ export function useSuika() {
           maxT = Math.max(maxT, t);
           if (t > OVER_LIMIT_SEC) {
             st.over = true;
+            st.feverT = 0;
+            store().setFever(false, 0);
             store().gameOver();
             sfx.gameOver();
             if (store().isRecord) setTimeout(() => sfx.fanfare(), 700);
@@ -339,7 +378,7 @@ export function useSuika() {
 
     const draw = (t: number): void => {
       ctx.clearRect(0, 0, BOARD_W, BOARD_H);
-      ctx.fillStyle = '#eef5e9';
+      ctx.fillStyle = st.feverT > 0 ? '#fff3d3' : '#eef5e9';
       ctx.fillRect(0, 0, BOARD_W, BOARD_H);
       ctx.fillStyle = '#376f55';
       ctx.fillRect(0, 0, WALL, BOARD_H);
@@ -434,6 +473,17 @@ export function useSuika() {
       if (!gs.paused && gs.started) {
         Engine.update(engine, 1000 / 60);
         if (!st.over) checkOverflow(dt);
+        if (st.feverT > 0) {
+          st.feverT -= dt;
+          if (st.feverT <= 0) {
+            st.feverT = 0;
+            store().setFever(false, 0);
+            if (!st.over) showToast('피버 종료!');
+          } else {
+            const left = Math.ceil(st.feverT);
+            if (store().feverLeft !== left) store().setFever(true, left);
+          }
+        }
         if (st.comboTimer > 0) {
           st.comboTimer--;
           if (st.comboTimer === 0) {
@@ -559,26 +609,26 @@ export function useSuika() {
     Body.setVelocity(body, { x: 0, y: 2 });
     Composite.add(st.engine.world, body);
     st.current = st.next;
-    st.next = randDrop();
+    st.next = st.feverT > 0 ? randFeverDrop() : randDrop();
     useGameStore.getState().setNextLv(st.next);
     drawNext(st.next);
     st.canDrop = false;
     st.dropTimer = clearTimer(st.dropTimer);
     st.dropTimer = window.setTimeout(() => {
       st.canDrop = true;
-    }, DROP_COOLDOWN_MS);
+    }, st.feverT > 0 ? FEVER_DROP_COOLDOWN_MS : DROP_COOLDOWN_MS);
     sfx.drop();
     syncBgm(); // 첫 제스처에 오디오 언락 + BGM 시작
   }, [drawNext]);
   const dropRef = useRef(drop);
   dropRef.current = drop;
 
-  /* 박스 흔들기 — 모든 과일에 랜덤 충격을 가해 배치를 뒤섞음. 쿨다운 적용. */
+  /* 박스 흔들기 — 모든 과일에 랜덤 충격을 가해 배치를 뒤섞음. 쿨다운 적용. 피버 중엔 위험 횟수 미소모. */
   const shake = useCallback(() => {
     const st = g.current;
     const gs = useGameStore.getState();
     if (!st || !st.engine || st.over || gs.paused || !gs.started || !gs.canShake) return;
-    if (st.dangerActive) {
+    if (st.dangerActive && st.feverT <= 0) {
       if (gs.dangerShakeLeft <= 0) {
         showToast('⚠️ 위험 중 흔들기 소진!');
         sfx.ui();
@@ -659,6 +709,7 @@ export function useSuika() {
     st.dangerT = 0;
     st.dangerActive = false;
     st.dangerClearT = 0;
+    st.feverT = 0;
     st.mergeAnim = [];
     st.pops = [];
     st.dropTimer = clearTimer(st.dropTimer);

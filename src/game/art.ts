@@ -50,12 +50,12 @@ export const FRUITS: Fruit[] = [
     pal: { top: '#ffd283', mid: '#f89835', bot: '#cb6224', line: '#874525' },
   },
   {
-    name: '자두',
+    name: '참다래',
     r: 41,
-    hitbox: { x: 0.84, y: 0.81 },
-    artOffsetY: 0.15,
+    hitbox: { x: 0.85, y: 0.91 },
+    artOffsetY: 0.06,
     score: 10,
-    pal: { top: '#bd83aa', mid: '#793f77', bot: '#4a2856', line: '#36263e' },
+    pal: { top: '#f5c779', mid: '#c17a36', bot: '#7e4725', line: '#5a321e' },
   },
   {
     name: '복숭아',
@@ -109,9 +109,15 @@ export const FRUITS: Fruit[] = [
 
 export const MAX_LEVEL = FRUITS.length - 1;
 export const DROP_POOL: number[] = [0, 0, 0, 1, 1, 1, 2, 2, 3, 3, 4];
+/** 피버 중 드롭 풀 — 상위 과일 위주로 나와 합체가 쉬워짐 */
+export const FEVER_DROP_POOL: number[] = [2, 2, 3, 3, 3, 4, 4, 5];
 
 export function randDrop(): number {
   return DROP_POOL[Math.floor(Math.random() * DROP_POOL.length)] ?? 0;
+}
+
+export function randFeverDrop(): number {
+  return FEVER_DROP_POOL[Math.floor(Math.random() * FEVER_DROP_POOL.length)] ?? 2;
 }
 
 export function makeSprites(): Sprite[] {

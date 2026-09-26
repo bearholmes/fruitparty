@@ -19,6 +19,13 @@ export const DANGER_CLEAR_RESET_SEC = 2.0;
 export const COMBO_WINDOW_FRAMES = 120;
 export const TOAST_MS = 1800;
 export const FINAL_BONUS = 5000;
+/** 단감 합체 보상 피버 — 지속시간·점수배율·낙하쿨다운·콤보유지·폭발반경·정리상한 */
+export const FEVER_DURATION_SEC = 30;
+export const FEVER_SCORE_MULT = 3;
+export const FEVER_DROP_COOLDOWN_MS = 120;
+export const FEVER_COMBO_WINDOW_FRAMES = 360;
+export const FEVER_BLAST_RADIUS = 240;
+export const FEVER_BLAST_MAX_LEVEL = 6;
 
 /** 진화 축하 토스트를 띄우는 최소 레벨 (7 = 포도) */
 export const EVO_TOAST_MIN_LEVEL = 7;

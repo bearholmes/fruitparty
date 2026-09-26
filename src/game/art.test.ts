@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { FRUITS, MAX_LEVEL, DROP_POOL, randDrop } from './art';
+import { FRUITS, MAX_LEVEL, DROP_POOL, randDrop, FEVER_DROP_POOL, randFeverDrop } from './art';
 
 describe('art', () => {
   it('과일은 10단계이며 반경·점수가 단조 증가한다', () => {
@@ -33,6 +33,21 @@ describe('art', () => {
   it('randDrop은 풀 안에서만 뽑는다', () => {
     for (let i = 0; i < 300; i++) {
       expect(DROP_POOL).toContain(randDrop());
+    }
+  });
+
+  it('피버 드롭 풀은 3~6단계(인덱스 2~5)만 포함한다', () => {
+    expect(FEVER_DROP_POOL.length).toBeGreaterThan(0);
+    for (const lv of FEVER_DROP_POOL) {
+      expect(Number.isInteger(lv)).toBe(true);
+      expect(lv).toBeGreaterThanOrEqual(2);
+      expect(lv).toBeLessThanOrEqual(5);
+    }
+  });
+
+  it('randFeverDrop은 피버 풀 안에서만 뽑는다', () => {
+    for (let i = 0; i < 300; i++) {
+      expect(FEVER_DROP_POOL).toContain(randFeverDrop());
     }
   });
 });

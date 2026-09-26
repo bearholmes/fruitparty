@@ -15,6 +15,7 @@ import {
 } from 'lucide-react';
 import { FRUITS } from './game/art';
 import { previewBgm } from './game/bgm';
+import { FEVER_SCORE_MULT } from './game/constants';
 import type { LeaderboardPeriod } from './game/leaderboard';
 import { sfx } from './game/sfx';
 import { useGameStore } from './game/store';
@@ -65,6 +66,8 @@ export default function App() {
   const canShake = useGameStore((s) => s.canShake);
   const danger = useGameStore((s) => s.danger);
   const dangerShakeLeft = useGameStore((s) => s.dangerShakeLeft);
+  const feverActive = useGameStore((s) => s.feverActive);
+  const feverLeft = useGameStore((s) => s.feverLeft);
 
   const busy = over || paused || !started;
 
@@ -206,8 +209,13 @@ export default function App() {
               </button>
             </div>
           </div>
-          <div className="canvas-holder">
+          <div className={feverActive ? 'canvas-holder fever' : 'canvas-holder'}>
             <canvas id="game" ref={canvasRef} width="420" height="660"></canvas>
+            {feverActive && (
+              <div className="fever-banner" aria-live="polite">
+                🔥 FEVER ×{FEVER_SCORE_MULT} · {feverLeft}초
+              </div>
+            )}
             {!started && (
               <div className="overlay">
                 <div className="card start-card">
@@ -382,7 +390,7 @@ export default function App() {
                 빨간 선 위에 과일이 <b>3초</b> 쌓이면 게임오버.
               </li>
               <li>
-                단감 2개가 만나면 터지며 <b>보너스</b>!
+                단감 2개가 만나면 폭발 + <b>30초 피버타임</b>(점수 3배·주변 정리)!
               </li>
               <li>
                 떨어질 과일은 <b>1~5단계</b> 중 랜덤.
