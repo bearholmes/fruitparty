@@ -194,7 +194,7 @@ export function useSuika() {
 
     const pulseCombo = (combo: number): void => {
       if (!COMBO_MILESTONES.has(combo)) return;
-      showToast(`🔥x${combo}!`);
+      showToast(`🔥COMBO x${combo}!`);
       const holder = canvasRef.current?.parentElement;
       if (!holder) return;
       holder.classList.remove('combo-flash');
