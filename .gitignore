@@ -10,4 +10,4 @@ coverage/
 .sites-runtime/
 next-env.d.ts
 tsconfig.tsbuildinfo
-site/
+.sites-checkout/
