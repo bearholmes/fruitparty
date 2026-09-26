@@ -11,6 +11,7 @@ describe('베스트 20 진입', () => {
     const entries = Array.from({ length: 20 }, (_, index) => ({
       name: '테스트',
       score: 100 - index,
+      maxCombo: null,
     }));
     expect(qualifiesForLeaderboard(81, entries)).toBe(false);
     expect(qualifiesForLeaderboard(82, entries)).toBe(true);

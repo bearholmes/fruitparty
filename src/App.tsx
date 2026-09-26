@@ -420,7 +420,12 @@ export default function App() {
                 {leaderboardStatus === 'ready' && Array.from({ length: 20 }, (_, index) => (
                   <div className="leaderboard-row" key={index}>
                     <span className="leaderboard-rank">{index + 1}</span>
-                    <span className="leaderboard-name">{leaderboard[index]?.name ?? '—'}</span>
+                    <div className="leaderboard-player">
+                      <span className="leaderboard-name">{leaderboard[index]?.name ?? '—'}</span>
+                      <span className="leaderboard-combo">
+                        최고 콤보 {leaderboard[index]?.maxCombo == null ? '—' : `×${leaderboard[index].maxCombo}`}
+                      </span>
+                    </div>
                     <strong>{leaderboard[index]?.score.toLocaleString() ?? '—'}</strong>
                   </div>
                 ))}

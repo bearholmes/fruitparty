@@ -1,0 +1,1 @@
+ALTER TABLE `leaderboard` ADD `max_combo` integer;

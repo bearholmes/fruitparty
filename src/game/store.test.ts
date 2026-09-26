@@ -7,6 +7,7 @@ function freshState() {
     score: 0,
     best: 0,
     combo: 0,
+    maxCombo: 0,
     nextLv: 0,
     over: false,
     paused: false,
@@ -68,10 +69,10 @@ describe('store', () => {
     const fetchMock = vi.fn().mockResolvedValue(Response.json({ entries: [{ name: '영희', score: 50 }] }));
     vi.stubGlobal('fetch', fetchMock);
     const submissionId = '11111111-1111-4111-8111-111111111111';
-    useGameStore.setState({ over: true, score: 50, pendingLeaderboard: true, submissionId });
+    useGameStore.setState({ over: true, score: 50, maxCombo: 7, pendingLeaderboard: true, submissionId });
     expect(await useGameStore.getState().saveLeaderboardScore('영희')).toBe(true);
     expect(fetchMock).toHaveBeenCalledWith('/api/leaderboard', expect.objectContaining({ method: 'POST' }));
-    expect(JSON.parse(fetchMock.mock.calls[0][1].body)).toEqual({ name: '영희', score: 50, submissionId });
+    expect(JSON.parse(fetchMock.mock.calls[0][1].body)).toEqual({ name: '영희', score: 50, maxCombo: 7, submissionId });
     expect(useGameStore.getState()).toMatchObject({
       leaderboard: [{ name: '영희', score: 50 }],
       pendingLeaderboard: false,
@@ -128,11 +129,12 @@ describe('store', () => {
     useGameStore.setState({
       over: true,
       score: 50,
+      maxCombo: 4,
       pendingLeaderboard: true,
       submissionId: '44444444-4444-4444-8444-444444444444',
     });
     expect(await useGameStore.getState().saveLeaderboardScore('unknown')).toBe(true);
-    expect(JSON.parse(fetchMock.mock.calls[0][1].body)).toMatchObject({ name: 'unknown', score: 50 });
+    expect(JSON.parse(fetchMock.mock.calls[0][1].body)).toMatchObject({ name: 'unknown', score: 50, maxCombo: 4 });
     expect(useGameStore.getState()).toMatchObject({
       pendingLeaderboard: false,
       submittedLeaderboard: true,
@@ -161,6 +163,7 @@ describe('store', () => {
       paused: true,
       started: false,
       combo: 5,
+      maxCombo: 5,
       canShake: false,
       danger: true,
       dangerShakeLeft: 0,
@@ -170,6 +173,7 @@ describe('store', () => {
     expect(s).toMatchObject({
       score: 0,
       combo: 0,
+      maxCombo: 0,
       over: false,
       paused: false,
       isRecord: false,
@@ -192,6 +196,8 @@ describe('store', () => {
     expect(useGameStore.getState().canShake).toBe(false);
     s.setCombo(4);
     expect(useGameStore.getState().combo).toBe(4);
+    s.setCombo(0);
+    expect(useGameStore.getState().maxCombo).toBe(4);
     s.showToast('테스트');
     expect(useGameStore.getState().toast?.msg).toBe('테스트');
     s.hideToast();

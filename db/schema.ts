@@ -4,5 +4,6 @@ export const leaderboard = sqliteTable('leaderboard', {
   id: integer('id').primaryKey({ autoIncrement: true }),
   name: text('name').notNull(),
   score: integer('score').notNull(),
+  maxCombo: integer('max_combo'),
   submissionId: text('submission_id').unique(),
 });

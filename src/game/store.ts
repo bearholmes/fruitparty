@@ -31,6 +31,7 @@ export interface GameState {
   score: number;
   best: number;
   combo: number;
+  maxCombo: number;
   nextLv: number;
   over: boolean;
   paused: boolean;
@@ -77,6 +78,7 @@ export const useGameStore = create<GameState>()((set, get) => ({
   score: 0,
   best: 0,
   combo: 0,
+  maxCombo: 0,
   nextLv: randDrop(),
   over: false,
   paused: false,
@@ -104,7 +106,7 @@ export const useGameStore = create<GameState>()((set, get) => ({
     if (score > best) best = score;
     set({ score, best });
   },
-  setCombo: (combo) => set({ combo }),
+  setCombo: (combo) => set({ combo, maxCombo: Math.max(get().maxCombo, combo) }),
   setNextLv: (nextLv) => set({ nextLv }),
   gameOver: () => {
     if (get().over) return;
@@ -136,11 +138,11 @@ export const useGameStore = create<GameState>()((set, get) => ({
     }
   },
   saveLeaderboardScore: async (name) => {
-    const { over, pendingLeaderboard, submittedLeaderboard, submittingLeaderboard, score, submissionId } = get();
+    const { over, pendingLeaderboard, submittedLeaderboard, submittingLeaderboard, score, maxCombo, submissionId } = get();
     if (!over || !pendingLeaderboard || submittedLeaderboard || submittingLeaderboard || !submissionId || !name.trim()) return false;
     set({ submittingLeaderboard: true, leaderboardError: null });
     try {
-      const leaderboard = await submitLeaderboardScore(name.trim(), score, submissionId);
+      const leaderboard = await submitLeaderboardScore(name.trim(), score, maxCombo, submissionId);
       set({
         leaderboard,
         pendingLeaderboard: false,
@@ -198,6 +200,7 @@ export const useGameStore = create<GameState>()((set, get) => ({
     set({
       score: 0,
       combo: 0,
+      maxCombo: 0,
       over: false,
       paused: false,
       started: true,
