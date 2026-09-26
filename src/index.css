@@ -657,7 +657,6 @@ button:focus-visible {
 }
 .leaderboard-row:nth-child(-n + 3) {
   background: #fff2dc;
-  font-weight: 800;
 }
 .leaderboard-rank {
   color: var(--green);
