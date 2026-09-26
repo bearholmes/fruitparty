@@ -115,8 +115,6 @@ function comboStyle(combo: number): { size: number; color: string } {
   };
 }
 
-const COMBO_MILESTONES = new Set([3, 5, 8, 12, 20]);
-
 /* 수박게임 엔진 훅 — Matter 물리 + 스프라이트 렌더.
    UI 상태는 zustand 스토어가 소유, 루프·충돌 콜백에선 getState()로 접근.
    반환은 canvas ref와 액션만 (점수 등은 App에서 스토어 셀렉터로 구독). */
@@ -193,7 +191,7 @@ export function useSuika() {
     };
 
     const pulseCombo = (combo: number): void => {
-      if (!COMBO_MILESTONES.has(combo)) return;
+      if (combo < 10 || combo % 10 !== 0) return;
       showToast(`🔥COMBO x${combo}!`);
       const holder = canvasRef.current?.parentElement;
       if (!holder) return;
