@@ -3,6 +3,12 @@
 같은 과일을 합쳐 더 큰 과일을 만드는 수박 게임 스타일의 웹 퍼즐 게임입니다.
 물리 엔진 기반 낙하·합체 플레이에 콤보, 피버타임, 온라인 리더보드를 더했습니다.
 
+이 프로젝트는 muse-spark-1.3를 테스트해보기 위한 프로젝트입니다.
+Muse 내장 이미지 생성 결과물이 만족스럽지 않아 일부 GPT 6를 사용하였습니다. 또한 리더보드는 GPT Site를 이용하기 위해 일부 사용하였습니다.
+- 설계 및 로직 전반 : muse-spark 1.3 MAX
+- 리더보드 및 이미지 생성 : GPT 6-Sol High
+
+
 ## 게임 방법
 
 - ← → 키로 이동, 클릭 / Space로 과일 낙하
@@ -68,10 +74,3 @@ db/
 public/
   fruits/          # 과일 스프라이트 (10종)
 ```
-
-## 리더보드 API
-
-- `GET /api/leaderboard` — 일간 · 주간 · 전체 TOP 20 조회
-- `POST /api/leaderboard` — 점수 등록 (`name`, `score`, `maxCombo`, `feverCount`, `submissionId`)
-  - 이름 8자 이내, 중복 제출 방지용 `submissionId`(UUID v4) 필수
-  - TOP 20에 들지 못하면 `409` 응답
