@@ -3,6 +3,7 @@
 :root {
   --bg: #f6f5ec;
   --ink: #243c31;
+  --ink70: rgba(36,60,49, .7);
   --muted: #728176;
   --line: #dce5d8;
   --accent: #e1664f;
@@ -15,6 +16,9 @@
 * {
   box-sizing: border-box;
   -webkit-tap-highlight-color: transparent;
+}
+#root {
+  min-height: 100vh;
 }
 body {
   margin: 0;
@@ -39,12 +43,13 @@ button:focus-visible {
 }
 .layout {
   max-width: 600px;
+  min-height: 100vh;
   margin: 0 auto;
   padding: 18px 20px 0;
   display: grid;
   grid-template-columns: 1fr;
   gap: 18px;
-  align-items: start;
+  align-items: center;
 }
 .board-wrap,
 .panel {
@@ -668,7 +673,7 @@ button:focus-visible {
   left: 50%;
   top: 18%;
   transform: translateX(-50%);
-  background: var(--ink);
+  background: var(--ink70);
   color: #fff;
   padding: 10px 16px;
   border-radius: 999px;
