@@ -36,6 +36,13 @@
       "when": 1790413027854,
       "tag": "0004_chief_blink",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "6",
+      "when": 1790419051362,
+      "tag": "0005_reset_leaderboard",
+      "breakpoints": true
     }
   ]
 }

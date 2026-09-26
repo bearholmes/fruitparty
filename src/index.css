@@ -755,6 +755,16 @@ button:focus-visible {
 .leaderboard-player {
   min-width: 0;
 }
+.leaderboard-score {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  white-space: nowrap;
+}
+.leaderboard-date {
+  color: var(--muted);
+  font-size: 12px;
+}
 .leaderboard-combo {
   display: block;
   color: var(--muted);

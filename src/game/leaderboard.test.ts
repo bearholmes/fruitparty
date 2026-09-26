@@ -1,5 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import { qualifiesForAnyLeaderboard, qualifiesForLeaderboard } from './leaderboard';
+import { formatLeaderboardDate, qualifiesForAnyLeaderboard, qualifiesForLeaderboard } from './leaderboard';
+
+describe('순위표 날짜', () => {
+  it('한국 시간의 날짜를 두 자리 연월일로 표시한다', () => {
+    expect(formatLeaderboardDate('2026-09-25T14:59:59.000Z')).toBe('26.09.25');
+    expect(formatLeaderboardDate('2026-09-25T15:00:00.000Z')).toBe('26.09.26');
+  });
+});
 
 describe('베스트 20 진입', () => {
   it('빈 순위표에는 양수 점수만 등록한다', () => {

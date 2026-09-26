@@ -6,6 +6,7 @@ export interface LeaderboardEntry {
   score: number;
   maxCombo: number | null;
   feverCount: number | null;
+  createdAt: string | null;
 }
 
 export interface LeaderboardBoards {
@@ -23,11 +24,11 @@ export async function top20Boards(now = new Date()): Promise<LeaderboardBoards> 
   const db = database();
   const start = periodStarts(now);
   const [daily, weekly, all] = await Promise.all([
-    db.prepare('SELECT name, score, max_combo AS maxCombo, fever_count AS feverCount FROM leaderboard WHERE created_at >= ? ORDER BY score DESC, id ASC LIMIT 20')
+    db.prepare('SELECT name, score, max_combo AS maxCombo, fever_count AS feverCount, created_at AS createdAt FROM leaderboard WHERE created_at >= ? ORDER BY score DESC, id ASC LIMIT 20')
       .bind(start.daily).all<LeaderboardEntry>(),
-    db.prepare('SELECT name, score, max_combo AS maxCombo, fever_count AS feverCount FROM leaderboard WHERE created_at >= ? ORDER BY score DESC, id ASC LIMIT 20')
+    db.prepare('SELECT name, score, max_combo AS maxCombo, fever_count AS feverCount, created_at AS createdAt FROM leaderboard WHERE created_at >= ? ORDER BY score DESC, id ASC LIMIT 20')
       .bind(start.weekly).all<LeaderboardEntry>(),
-    db.prepare('SELECT name, score, max_combo AS maxCombo, fever_count AS feverCount FROM leaderboard ORDER BY score DESC, id ASC LIMIT 20')
+    db.prepare('SELECT name, score, max_combo AS maxCombo, fever_count AS feverCount, created_at AS createdAt FROM leaderboard ORDER BY score DESC, id ASC LIMIT 20')
       .all<LeaderboardEntry>(),
   ]);
   return { daily: daily.results, weekly: weekly.results, all: all.results };

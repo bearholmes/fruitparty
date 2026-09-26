@@ -29,6 +29,8 @@ import {
   FEVER_BLAST_RADIUS,
   FEVER_BLAST_MAX_LEVEL,
   FEVER_MERGE_DELAY_SEC,
+  FEVER_SHAKE_MULT,
+  FEVER_SHAKE_COOLDOWN_MS,
 } from './constants';
 
 /** 과일 식별용 커스텀 필드를 단 Matter 바디 */
@@ -653,12 +655,13 @@ export function useSuika() {
   const dropRef = useRef(drop);
   dropRef.current = drop;
 
-  /* 박스 흔들기 — 모든 과일에 랜덤 충격을 가해 배치를 뒤섞음. 쿨다운 적용. 피버 중엔 위험 횟수 미소모. */
+  /* 박스 흔들기 — 모든 과일에 랜덤 충격을 가해 배치를 뒤섞음. 쿨다운 적용. 피버 중엔 위험 횟수 미소모 + 강화. */
   const shake = useCallback(() => {
     const st = g.current;
     const gs = useGameStore.getState();
     if (!st || !st.engine || st.over || gs.paused || !gs.started || !gs.canShake) return;
-    if (st.dangerActive && st.feverT <= 0) {
+    const fever = st.feverT > 0;
+    if (st.dangerActive && !fever) {
       if (gs.dangerShakeLeft <= 0) {
         showToast('⚠️ 위험 중 흔들기 소진!');
         sfx.ui();
@@ -670,17 +673,21 @@ export function useSuika() {
       (b) => !b.isStatic && (b as FruitBody).fruitLevel !== undefined,
     );
     if (bodies.length === 0) return;
+    const power = fever ? FEVER_SHAKE_MULT : 1;
     for (const b of bodies) {
       const dir = Math.random() < 0.5 ? -1 : 1;
       Body.setVelocity(b, {
-        x: b.velocity.x + dir * (2.5 + Math.random() * 3.5),
-        y: b.velocity.y - (1 + Math.random() * 2.5),
+        x: b.velocity.x + dir * (2.5 + Math.random() * 3.5) * power,
+        y: b.velocity.y - (1 + Math.random() * 2.5) * power,
       });
-      Body.setAngularVelocity(b, b.angularVelocity + (Math.random() - 0.5) * 0.4);
+      Body.setAngularVelocity(b, b.angularVelocity + (Math.random() - 0.5) * 0.4 * power);
     }
     gs.setCanShake(false);
     st.shakeTimer = clearTimer(st.shakeTimer);
-    st.shakeTimer = window.setTimeout(() => useGameStore.getState().setCanShake(true), SHAKE_COOLDOWN_MS);
+    st.shakeTimer = window.setTimeout(
+      () => useGameStore.getState().setCanShake(true),
+      fever ? FEVER_SHAKE_COOLDOWN_MS : SHAKE_COOLDOWN_MS,
+    );
     const holder = canvasRef.current?.parentElement;
     if (holder) {
       holder.classList.remove('shake');

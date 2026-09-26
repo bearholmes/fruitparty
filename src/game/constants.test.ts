@@ -15,6 +15,8 @@ import {
   FEVER_BLAST_RADIUS,
   FEVER_BLAST_MAX_LEVEL,
   FEVER_MERGE_DELAY_SEC,
+  FEVER_SHAKE_MULT,
+  FEVER_SHAKE_COOLDOWN_MS,
 } from './constants';
 
 /* 의도된 난이도 튜닝값 — 리밸런싱 시 이 기대값도 함께 갱신할 것 */
@@ -30,13 +32,15 @@ describe('constants', () => {
     expect(COMBO_WINDOW_FRAMES).toBe(120);
   });
 
-  it('피버 튜닝값(지속·배율·쿨다운·콤보창·폭발반경·정리상한·합체지연)이 의도와 일치한다', () => {
+  it('피버 튜닝값(지속·배율·쿨다운·콤보창·폭발반경·정리상한·합체지연·흔들기)이 의도와 일치한다', () => {
     expect(FEVER_DURATION_SEC).toBe(30);
     expect(FEVER_SCORE_MULT).toBe(3);
     expect(FEVER_DROP_COOLDOWN_MS).toBe(120);
     expect(FEVER_COMBO_WINDOW_FRAMES).toBe(360);
     expect(FEVER_BLAST_RADIUS).toBe(240);
     expect(FEVER_BLAST_MAX_LEVEL).toBe(6);
-    expect(FEVER_MERGE_DELAY_SEC).toBe(0.1);
+    expect(FEVER_MERGE_DELAY_SEC).toBe(0.05);
+    expect(FEVER_SHAKE_MULT).toBe(1.5);
+    expect(FEVER_SHAKE_COOLDOWN_MS).toBe(1000);
   });
 });

@@ -1,5 +1,5 @@
 /* 절차적 BGM — 3개 곡을 오실레이터로 합성해 게임마다 랜덤 재생.
-   파일 루프 대신 코드 작곡: 무한 재생 + 위험 시 텐션 편곡으로 전환.
+   파일 루프 대신 코드 작곡: 무한 재생 + 위험 시 텐션 편곡·피버 시 고조 편곡으로 전환.
    sfx.ts와 같은 Web Audio 합성 방식을 쓴다 (에셋 없음). */
 
 import { useGameStore } from './store';
@@ -125,6 +125,7 @@ interface BgmPlayer {
   track: number;
   pending: number | null;
   tense: boolean;
+  fever: boolean;
 }
 
 /* HMR로 모듈이 재실행돼도 인스턴스가 늘지 않도록 globalThis에 보관.
@@ -169,6 +170,7 @@ export function ensureBgm(): BgmPlayer | null {
       track: Math.floor(Math.random() * BGM_TRACKS.length),
       pending: null,
       tense: false,
+      fever: false,
     };
     setPlayer(p);
     return p;
@@ -314,12 +316,13 @@ function snareAt(p: BgmPlayer, t0: number, tense: boolean): void {
   toneAt(p, 190, t0, 0.08, 0.03, 'triangle');
 }
 
-function stepDur(track: BgmTrack, tense = false): number {
-  return (60 / track.bpm / 4) * (tense ? 0.8 : 1);
+function stepDur(track: BgmTrack, tense = false, fever = false): number {
+  return (60 / track.bpm / 4) * (fever ? 0.7 : tense ? 0.8 : 1);
 }
 
-/* 16분음 그리드 한 스텝 예약. 텐션 모드에선 아르페지오가 16분음으로 촘촘해지고
-   베이스 펄스+하이햇이 붙는다. 곡 교체(pending)는 마디 경계에서만 적용. */
+/* 16분음 그리드 한 스텝 예약. 텐션·피버 모드에선 아르페지오가 16분음으로 촘촘해지고
+   베이스 펄스+하이햇이 붙는다. 피버에선 템포가 더 빨라지고 리드가 한 옥타브 올라간다.
+   곡 교체(pending)는 마디 경계에서만 적용. */
 function scheduleStep(p: BgmPlayer, step: number, t: number): void {
   if (step % STEPS_PER_BAR === 0 && p.pending !== null) {
     p.track = p.pending;
@@ -328,10 +331,11 @@ function scheduleStep(p: BgmPlayer, step: number, t: number): void {
   const track = BGM_TRACKS[p.track];
   const chord = track.bars[Math.floor(step / STEPS_PER_BAR) % BAR_COUNT];
   const s16 = step % STEPS_PER_BAR;
-  const sd = stepDur(track, p.tense);
+  const sd = stepDur(track, p.tense, p.fever);
+  const hot = p.tense || p.fever;
   const tones = [chord.tones[0], chord.tones[1], chord.tones[2], chord.tones[0] + 12];
-  // 크래시: 루프 시작, 텐션에선 매 마디
-  if (step % (STEPS_PER_BAR * BAR_COUNT) === 0 || (p.tense && s16 === 0)) {
+  // 크래시: 루프 시작, 고조 상태에선 매 마디
+  if (step % (STEPS_PER_BAR * BAR_COUNT) === 0 || (hot && s16 === 0)) {
     noiseHit(p, t, 0.3, 0.06, 'highpass', 5000);
   }
   // 베이스 그루브: 8분음 파운딩 (서브가 아닌 멜로딕 음역)
@@ -339,26 +343,27 @@ function scheduleStep(p: BgmPlayer, step: number, t: number): void {
     const b = chord.bass + 12 + track.groove[Math.floor(s16 / 2)];
     toneAt(p, midiFreq(b), t, sd * 1.6, BASS_VOL, 'triangle', 0.01);
   }
-  // 스캥크: 오프비트 코드 (텐션에선 8분음)
-  if (p.tense ? s16 % 2 === 0 : s16 % 4 === 2) {
+  // 스캥크: 오프비트 코드 (고조 상태에선 8분음)
+  if (hot ? s16 % 2 === 0 : s16 % 4 === 2) {
     for (const m of chord.tones) toneAt(p, midiFreq(m + 12), t, sd * 1.2, SKANK_VOL, 'triangle');
   }
-  if (p.tense || s16 % 2 === 0) {
-    const m = tones[track.arp[s16]] + (p.tense ? 12 : 0);
-    toneAt(p, midiFreq(m), t, sd * 1.8, p.tense ? ARP_TENSE_VOL : ARP_VOL, 'triangle');
+  if (hot || s16 % 2 === 0) {
+    const m = tones[track.arp[s16]] + (hot ? 12 : 0);
+    toneAt(p, midiFreq(m), t, sd * 1.8, hot ? ARP_TENSE_VOL : ARP_VOL, 'triangle');
   }
   if (s16 % 2 === 0) {
     const m = track.lead[Math.floor(step / 2) % (BAR_COUNT * 8)];
     if (m !== null) {
-      toneAt(p, midiFreq(m), t, sd * 2.2, LEAD_VOL, 'triangle');
-      toneAt(p, midiFreq(m), t, sd * 2.2, LEAD_SQ_VOL, 'square');
-      toneAt(p, midiFreq(m + 12), t, sd * 2.2, LEAD_OCT_VOL, 'sine');
+      const lm = m + (p.fever ? 12 : 0);
+      toneAt(p, midiFreq(lm), t, sd * 2.2, LEAD_VOL, 'triangle');
+      toneAt(p, midiFreq(lm), t, sd * 2.2, LEAD_SQ_VOL, 'square');
+      toneAt(p, midiFreq(lm + 12), t, sd * 2.2, LEAD_OCT_VOL, 'sine');
     }
   }
   if (s16 % 4 === 0) kickAt(p, t);
-  if (s16 === 4 || s16 === 12) snareAt(p, t, p.tense);
-  if (p.tense || s16 % 2 === 0) {
-    noiseHit(p, t, 0.04, p.tense ? HAT_VOL : HAT_SOFT_VOL, 'highpass', 7000);
+  if (s16 === 4 || s16 === 12) snareAt(p, t, hot);
+  if (hot || s16 % 2 === 0) {
+    noiseHit(p, t, 0.04, hot ? HAT_VOL : HAT_SOFT_VOL, 'highpass', 7000);
   }
 }
 
@@ -373,7 +378,7 @@ function tick(): void {
   if (p.nextTime < t0 - 0.1) p.nextTime = t0 + 0.05; // 오래 멈췄다 복귀하면 재동기화
   while (p.nextTime < t0 + LOOKAHEAD_SEC) {
     scheduleStep(p, p.step, p.nextTime);
-    p.nextTime += stepDur(BGM_TRACKS[p.track], p.tense);
+    p.nextTime += stepDur(BGM_TRACKS[p.track], p.tense, p.fever);
     p.step++;
   }
 }
@@ -434,12 +439,18 @@ function updateTension(p: BgmPlayer): void {
   }
 }
 
+/* 피버 진입·종료는 스토어 구독으로 syncBgm이 자동 호출되므로 플래그만 맞춘다 */
+function updateFever(p: BgmPlayer): void {
+  p.fever = useGameStore.getState().feverActive;
+}
+
 /* 스토어 변경(사운드 토글·게임오버·일시정지 등)에 BGM 재생 상태를 맞춤.
    시작·정지 시 볼륨 페이드로 부드럽게 전환. */
 export function syncBgm(): void {
   const p = ensureBgm();
   if (!p) return;
   updateTension(p);
+  updateFever(p);
   const playing = wantPlay();
   const target = selectedVolume();
   if (playing && !p.playing) {

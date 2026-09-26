@@ -3,6 +3,15 @@ export interface LeaderboardEntry {
   score: number;
   maxCombo: number | null;
   feverCount: number | null;
+  createdAt?: string | null;
+}
+
+export function formatLeaderboardDate(createdAt: string | null | undefined): string {
+  if (!createdAt) return '—';
+  const date = new Date(createdAt);
+  if (Number.isNaN(date.getTime())) return '—';
+  return new Date(date.getTime() + 9 * 60 * 60 * 1000)
+    .toISOString().slice(2, 10).replaceAll('-', '.');
 }
 
 export type LeaderboardPeriod = 'daily' | 'weekly' | 'all';

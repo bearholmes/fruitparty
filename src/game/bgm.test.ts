@@ -126,6 +126,7 @@ describe('bgm', () => {
       paused: false,
       started: true,
       danger: false,
+      feverActive: false,
     });
   });
 
@@ -264,6 +265,31 @@ describe('bgm', () => {
     expect(player().tense).toBe(true);
     vi.advanceTimersByTime(1);
     expect(player().tense).toBe(false);
+  });
+
+  it('피버면 같은 시간에 더 많은 스텝을 예약한다 (템포 상승)', () => {
+    syncBgm();
+    for (let i = 0; i < 20; i++) step(0.1);
+    const normalSteps = player().step;
+    useGameStore.setState({ feverActive: true });
+    syncBgm();
+    expect(player().fever).toBe(true);
+    const base = player().step;
+    for (let i = 0; i < 20; i++) step(0.1);
+    expect(player().step - base).toBeGreaterThan(normalSteps);
+  });
+
+  it('피버면 리드가 한 옥타브 올라가고 끝나면 편곡이 복귀한다', () => {
+    syncBgm();
+    useGameStore.setState({ feverActive: true });
+    syncBgm();
+    expect(player().fever).toBe(true);
+    for (let i = 0; i < 96; i++) step(0.1);
+    // 0번 곡 리드 최고음 83 → 피버 옥타브업 + 고음 하모닉 = 107
+    expect(oscFreqs()).toContain(midiFreq(107));
+    useGameStore.setState({ feverActive: false });
+    syncBgm();
+    expect(player().fever).toBe(false);
   });
 
   it('resetTension은 텐션과 해제 타이머를 초기화한다', () => {

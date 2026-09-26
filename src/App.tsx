@@ -16,7 +16,7 @@ import {
 import { FRUITS } from './game/art';
 import { previewBgm } from './game/bgm';
 import { FEVER_DURATION_SEC, FEVER_SCORE_MULT } from './game/constants';
-import type { LeaderboardPeriod } from './game/leaderboard';
+import { formatLeaderboardDate, type LeaderboardPeriod } from './game/leaderboard';
 import { sfx } from './game/sfx';
 import { useGameStore } from './game/store';
 import { useSuika } from './game/useSuika';
@@ -401,7 +401,7 @@ export default function App() {
                 떨어질 과일은 <b>1~5단계</b> 중 랜덤.
               </li>
               <li>
-                <b>↑↓</b> 키로 박스 흔들기 (2초 쿨다운).
+                <b>↑↓</b> 키로 박스 흔들기 (2초 쿨다운, 피버 중 1초·강화).
               </li>
               <li>
                 위험 상태에선 흔들기 <b>5회</b> 제한 (해제 후 충전).
@@ -460,7 +460,14 @@ export default function App() {
                         Max Combo {visibleLeaderboard[index]?.maxCombo == null ? '—' : `x${visibleLeaderboard[index].maxCombo}`} | FT {visibleLeaderboard[index]?.feverCount == null ? '—' : `x${visibleLeaderboard[index].feverCount}`}
                       </span>
                     </div>
-                    <strong>{visibleLeaderboard[index]?.score.toLocaleString() ?? '—'}</strong>
+                    <div className="leaderboard-score">
+                      <strong>{visibleLeaderboard[index]?.score.toLocaleString() ?? '—'}</strong>
+                      {visibleLeaderboard[index] && (
+                        <time className="leaderboard-date" dateTime={visibleLeaderboard[index].createdAt ?? undefined}>
+                          {formatLeaderboardDate(visibleLeaderboard[index].createdAt)}
+                        </time>
+                      )}
+                    </div>
                   </div>
                 ))}
               </div>
