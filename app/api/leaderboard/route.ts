@@ -18,7 +18,7 @@ export async function POST(request: Request) {
   }
   const { name, score, submissionId } = payload as { name?: unknown; score?: unknown; submissionId?: unknown };
   const trimmed = typeof name === 'string' ? name.trim() : '';
-  if (!trimmed || Array.from(trimmed).length > 5 || !Number.isSafeInteger(score) || Number(score) <= 0 ||
+  if (!trimmed || Array.from(trimmed).length > 8 || !Number.isSafeInteger(score) || Number(score) <= 0 ||
     typeof submissionId !== 'string' || !/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/.test(submissionId)) {
     return Response.json({ error: '이름 또는 점수가 올바르지 않습니다.' }, { status: 400 });
   }

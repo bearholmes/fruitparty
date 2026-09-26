@@ -245,9 +245,9 @@ export default function App() {
                           id="player-name"
                           autoFocus
                           value={playerName}
-                          onChange={(event) => setPlayerName(Array.from(event.target.value).slice(0, 5).join(''))}
-                          maxLength={5}
-                          placeholder="이름 (5자 이내)"
+                          onChange={(event) => setPlayerName(Array.from(event.target.value).slice(0, 8).join(''))}
+                          maxLength={8}
+                          placeholder="이름 (8자 이내)"
                           aria-label="순위표에 표시할 이름"
                         />
                         <button className="btn" type="submit" disabled={!playerName.trim() || submittingLeaderboard}>
