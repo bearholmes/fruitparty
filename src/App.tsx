@@ -453,9 +453,11 @@ export default function App() {
                   <div className="leaderboard-row" key={index}>
                     <span className="leaderboard-rank">{index + 1}</span>
                     <div className="leaderboard-player">
-                      <span className="leaderboard-name">{visibleLeaderboard[index]?.name ?? '—'}</span>
+                      <span className="leaderboard-name">
+                        <strong>{visibleLeaderboard[index]?.name ?? '—'}</strong>
+                      </span>
                       <span className="leaderboard-combo">
-                        MAX COMBO {visibleLeaderboard[index]?.maxCombo == null ? '—' : `x${visibleLeaderboard[index].maxCombo}`} | FT {visibleLeaderboard[index]?.feverCount == null ? '—' : `x${visibleLeaderboard[index].feverCount}`}
+                        Max Combo {visibleLeaderboard[index]?.maxCombo == null ? '—' : `x${visibleLeaderboard[index].maxCombo}`} | FT {visibleLeaderboard[index]?.feverCount == null ? '—' : `x${visibleLeaderboard[index].feverCount}`}
                       </span>
                     </div>
                     <strong>{visibleLeaderboard[index]?.score.toLocaleString() ?? '—'}</strong>
