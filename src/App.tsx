@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { LeaderboardPeriod } from './game/leaderboard';
+import { composeResultShot } from './game/shot';
 import { useGameStore } from './game/store';
-import { useSuika } from './game/useSuika';
+import { useGameEngine } from './game/useGameEngine';
 import { CanvasHolder } from './components/CanvasHolder';
 import { Controls } from './components/Controls';
 import { LeaderboardDialog } from './components/LeaderboardDialog';
@@ -25,7 +26,7 @@ export default function App() {
     togglePause,
     moveLeft,
     moveRight,
-  } = useSuika();
+  } = useGameEngine();
   const over = useGameStore((s) => s.over);
   const refreshLeaderboard = useGameStore((s) => s.refreshLeaderboard);
   const loadAudioSettings = useGameStore((s) => s.loadAudioSettings);
@@ -70,22 +71,8 @@ export default function App() {
   const downloadShot = useCallback(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
-    const { score, best } = useGameStore.getState();
-    const W = canvas.width,
-      H = canvas.height,
-      PAD = 84;
-    const out = document.createElement('canvas');
-    out.width = W;
-    out.height = H + PAD;
-    const c = out.getContext('2d');
-    if (!c) return;
-    c.fillStyle = '#fffdf7';
-    c.fillRect(0, 0, out.width, out.height);
-    c.drawImage(canvas, 0, 0);
-    c.fillStyle = '#3d2b1f';
-    c.font = '800 34px Jua, sans-serif';
-    c.textAlign = 'center';
-    c.fillText(`SCORE ${score} · BEST ${best}`, W / 2, H + 56);
+    const { score, best, maxCombo, feverCount, gameOverAt } = useGameStore.getState();
+    const out = composeResultShot(canvas, { score, best, maxCombo, feverCount, gameOverAt });
     const a = document.createElement('a');
     a.download = `fruitparty-${score}.png`;
     a.href = out.toDataURL('image/png');

@@ -606,6 +606,36 @@ button:focus-visible {
   justify-content: center;
   gap: 6px;
 }
+.result-stats {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 7px;
+  margin: 12px 0 0;
+}
+.result-stats div {
+  background: #f1f6ed;
+  border-radius: 12px;
+  padding: 8px 10px;
+}
+.result-stats .wide {
+  grid-column: 1 / -1;
+  background: #f7f8f3;
+}
+.result-stats dt {
+  margin: 0;
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 800;
+}
+.result-stats dd {
+  margin: 3px 0 0;
+  font-size: 17px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+.result-stats .wide dd {
+  font-size: 15px;
+}
 .name-form {
   margin: 14px 0 0;
 }

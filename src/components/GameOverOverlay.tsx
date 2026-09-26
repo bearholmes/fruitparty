@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Camera, Frown, RotateCcw, Trophy } from 'lucide-react';
+import { formatShotDate } from '../game/shot';
 import { useGameStore } from '../game/store';
 
 const PLAYER_NAME_KEY = 'fruitparty.player-name';
@@ -21,6 +22,9 @@ interface GameOverOverlayProps {
 
 export function GameOverOverlay({ score, onRestart, onOpenLeaderboard, onDownloadShot }: GameOverOverlayProps) {
   const [playerName, setPlayerName] = useState(savedPlayerName);
+  const maxCombo = useGameStore((s) => s.maxCombo);
+  const feverCount = useGameStore((s) => s.feverCount);
+  const gameOverAt = useGameStore((s) => s.gameOverAt);
   const isRecord = useGameStore((s) => s.isRecord);
   const pendingLeaderboard = useGameStore((s) => s.pendingLeaderboard);
   const submittingLeaderboard = useGameStore((s) => s.submittingLeaderboard);
@@ -59,6 +63,20 @@ export function GameOverOverlay({ score, onRestart, onOpenLeaderboard, onDownloa
             <Trophy size={18} /> 최고기록!
           </div>
         )}
+        <dl className="result-stats">
+          <div>
+            <dt>최대 콤보</dt>
+            <dd>{maxCombo}</dd>
+          </div>
+          <div>
+            <dt>피버</dt>
+            <dd>{feverCount}회</dd>
+          </div>
+          <div className="wide">
+            <dt>종료</dt>
+            <dd>{formatShotDate(gameOverAt)}</dd>
+          </div>
+        </dl>
         {pendingLeaderboard && (
           <form className="name-form" onSubmit={submitName}>
             <label htmlFor="player-name">베스트 20 진입! 이름을 남겨주세요</label>

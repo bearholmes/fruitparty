@@ -17,6 +17,7 @@ export interface GameSlice {
   maxCombo: number;
   nextLv: number;
   over: boolean;
+  gameOverAt: number | null;
   paused: boolean;
   started: boolean;
   danger: boolean;
@@ -55,6 +56,7 @@ export const createGameSlice: StateCreator<GameState, [], [], GameSlice> = (set,
   maxCombo: 0,
   nextLv: randDrop(),
   over: false,
+  gameOverAt: null,
   paused: false,
   started: false,
   danger: false,
@@ -80,6 +82,7 @@ export const createGameSlice: StateCreator<GameState, [], [], GameSlice> = (set,
     const { score, best } = get();
     set({
       over: true,
+      gameOverAt: Date.now(),
       paused: false,
       isRecord: score > 0 && score >= best,
       pendingLeaderboard: false,
@@ -104,6 +107,7 @@ export const createGameSlice: StateCreator<GameState, [], [], GameSlice> = (set,
       combo: 0,
       maxCombo: 0,
       over: false,
+      gameOverAt: null,
       paused: false,
       started: true,
       danger: false,

@@ -15,6 +15,7 @@ function freshState() {
     maxCombo: 0,
     nextLv: 0,
     over: false,
+    gameOverAt: null,
     paused: false,
     started: true,
     danger: false,
@@ -184,6 +185,17 @@ describe('store', () => {
     expect(s.over).toBe(true);
     expect(s.paused).toBe(false);
     expect(s.isRecord).toBe(true);
+  });
+
+  it('gameOver는 종료시간을 기록하고 reset하면 지운다', () => {
+    const before = Date.now();
+    useGameStore.setState({ score: 120, best: 100 });
+    useGameStore.getState().gameOver();
+    const gameOverAt = useGameStore.getState().gameOverAt;
+    expect(gameOverAt).not.toBeNull();
+    expect(gameOverAt as number).toBeGreaterThanOrEqual(before);
+    useGameStore.getState().reset(1);
+    expect(useGameStore.getState().gameOverAt).toBeNull();
   });
 
   it('0점이면 최고기록으로 인정하지 않는다', () => {
