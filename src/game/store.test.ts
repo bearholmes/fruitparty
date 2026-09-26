@@ -2,6 +2,11 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { useGameStore } from './store';
 import { DANGER_SHAKE_MAX } from './constants';
 
+function boards(name: string, score: number) {
+  const entries = [{ name, score, maxCombo: null }];
+  return { daily: entries, weekly: entries, all: entries };
+}
+
 function freshState() {
   useGameStore.setState({
     score: 0,
@@ -15,7 +20,7 @@ function freshState() {
     danger: false,
     dangerShakeLeft: DANGER_SHAKE_MAX,
     isRecord: false,
-    leaderboard: [],
+    leaderboard: { daily: [], weekly: [], all: [] },
     pendingLeaderboard: false,
     submittedLeaderboard: false,
     submittingLeaderboard: false,
@@ -54,11 +59,11 @@ describe('store', () => {
   });
 
   it('DB 순위표를 읽고 게임오버 점수의 등록 자격을 판정한다', async () => {
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(Response.json({ entries: [{ name: '철수', score: 100 }] })));
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(Response.json({ boards: { daily: [], weekly: [], all: [{ name: '철수', score: 100, maxCombo: null }] } })));
     useGameStore.setState({ over: true, score: 50 });
     await useGameStore.getState().refreshLeaderboard();
     expect(useGameStore.getState()).toMatchObject({
-      leaderboard: [{ name: '철수', score: 100 }],
+      leaderboard: { daily: [], weekly: [], all: [{ name: '철수', score: 100, maxCombo: null }] },
       best: 100,
       pendingLeaderboard: true,
       leaderboardStatus: 'ready',
@@ -66,7 +71,7 @@ describe('store', () => {
   });
 
   it('이름과 점수를 DB에 제출하고 중복 등록을 막는다', async () => {
-    const fetchMock = vi.fn().mockResolvedValue(Response.json({ entries: [{ name: '영희', score: 50 }] }));
+    const fetchMock = vi.fn().mockResolvedValue(Response.json({ boards: boards('영희', 50) }));
     vi.stubGlobal('fetch', fetchMock);
     const submissionId = '11111111-1111-4111-8111-111111111111';
     useGameStore.setState({ over: true, score: 50, maxCombo: 7, pendingLeaderboard: true, submissionId });
@@ -74,7 +79,7 @@ describe('store', () => {
     expect(fetchMock).toHaveBeenCalledWith('/api/leaderboard', expect.objectContaining({ method: 'POST' }));
     expect(JSON.parse(fetchMock.mock.calls[0][1].body)).toEqual({ name: '영희', score: 50, maxCombo: 7, submissionId });
     expect(useGameStore.getState()).toMatchObject({
-      leaderboard: [{ name: '영희', score: 50 }],
+      leaderboard: boards('영희', 50),
       pendingLeaderboard: false,
       submittedLeaderboard: true,
       submittingLeaderboard: false,
@@ -100,7 +105,7 @@ describe('store', () => {
     expect(fetchMock).toHaveBeenCalledTimes(1);
     expect(await second).toBe(false);
 
-    resolveRequest(Response.json({ entries: [{ name: '영희', score: 50 }] }));
+    resolveRequest(Response.json({ boards: boards('영희', 50) }));
     expect(await first).toBe(true);
     expect(await useGameStore.getState().saveLeaderboardScore('영희')).toBe(false);
     expect(fetchMock).toHaveBeenCalledTimes(1);
@@ -109,7 +114,7 @@ describe('store', () => {
   it('저장 실패 후 재시도에도 같은 제출 번호를 쓴다', async () => {
     const fetchMock = vi.fn()
       .mockRejectedValueOnce(new Error('network'))
-      .mockResolvedValueOnce(Response.json({ entries: [{ name: '영희', score: 50 }] }));
+      .mockResolvedValueOnce(Response.json({ boards: boards('영희', 50) }));
     vi.stubGlobal('fetch', fetchMock);
     const submissionId = '33333333-3333-4333-8333-333333333333';
     useGameStore.setState({ over: true, score: 50, pendingLeaderboard: true, submissionId });
@@ -124,7 +129,7 @@ describe('store', () => {
   });
 
   it('등록을 건너뛰면 unknown으로 저장하고 pending을 해제한다', async () => {
-    const fetchMock = vi.fn().mockResolvedValue(Response.json({ entries: [{ name: 'unknown', score: 50 }] }));
+    const fetchMock = vi.fn().mockResolvedValue(Response.json({ boards: boards('unknown', 50) }));
     vi.stubGlobal('fetch', fetchMock);
     useGameStore.setState({
       over: true,
@@ -138,6 +143,34 @@ describe('store', () => {
     expect(useGameStore.getState()).toMatchObject({
       pendingLeaderboard: false,
       submittedLeaderboard: true,
+    });
+  });
+
+  it('순위 확인 전에 다시 시작해도 unknown을 보내고 이전 판의 응답이 새 판 상태를 바꾸지 않는다', async () => {
+    let resolveRequest!: (response: Response) => void;
+    const fetchMock = vi.fn().mockImplementation(() => new Promise<Response>((resolve) => {
+      resolveRequest = resolve;
+    }));
+    vi.stubGlobal('fetch', fetchMock);
+    useGameStore.setState({
+      over: true,
+      score: 50,
+      maxCombo: 4,
+      pendingLeaderboard: false,
+      submissionId: '55555555-5555-4555-8555-555555555555',
+    });
+
+    const saving = useGameStore.getState().saveLeaderboardScore('unknown', true);
+    expect(JSON.parse(fetchMock.mock.calls[0][1].body)).toMatchObject({ name: 'unknown', score: 50, maxCombo: 4 });
+    useGameStore.getState().reset(1);
+    resolveRequest(Response.json({ boards: boards('unknown', 50) }));
+    expect(await saving).toBe(true);
+    expect(useGameStore.getState()).toMatchObject({
+      over: false,
+      pendingLeaderboard: false,
+      submittedLeaderboard: false,
+      submittingLeaderboard: false,
+      submissionId: null,
     });
   });
 

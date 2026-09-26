@@ -15,6 +15,7 @@ import {
 } from 'lucide-react';
 import { FRUITS } from './game/art';
 import { previewBgm } from './game/bgm';
+import type { LeaderboardPeriod } from './game/leaderboard';
 import { sfx } from './game/sfx';
 import { useGameStore } from './game/store';
 import { useSuika } from './game/useSuika';
@@ -22,6 +23,7 @@ import { useSuika } from './game/useSuika';
 export default function App() {
   const [mobilePanelOpen, setMobilePanelOpen] = useState(false);
   const [leaderboardOpen, setLeaderboardOpen] = useState(false);
+  const [activeLeaderboard, setActiveLeaderboard] = useState<LeaderboardPeriod>('daily');
   const [playerName, setPlayerName] = useState('');
   const pausedByMenu = useRef(false);
   const pausedByLeaderboard = useRef(false);
@@ -44,6 +46,7 @@ export default function App() {
   const paused = useGameStore((s) => s.paused);
   const isRecord = useGameStore((s) => s.isRecord);
   const leaderboard = useGameStore((s) => s.leaderboard);
+  const visibleLeaderboard = leaderboard[activeLeaderboard];
   const pendingLeaderboard = useGameStore((s) => s.pendingLeaderboard);
   const submittingLeaderboard = useGameStore((s) => s.submittingLeaderboard);
   const leaderboardStatus = useGameStore((s) => s.leaderboardStatus);
@@ -266,7 +269,7 @@ export default function App() {
                     </div>
                   )}
                   <div className="game-over-actions">
-                    <button className="btn big" onClick={restart}>
+                    <button className="btn big" onClick={restart} disabled={submittingLeaderboard}>
                       <RotateCcw size={20} /> 다시 하기 (R)
                     </button>
                     <button className="btn" onClick={openLeaderboard}>
@@ -409,7 +412,23 @@ export default function App() {
                 <h2 id="leaderboard-title"><Trophy size={24} /> 베스트 스토어 TOP 20</h2>
                 <button className="btn" onClick={closeLeaderboard} aria-label="순위표 닫기"><X size={20} /></button>
               </div>
-              <div className="leaderboard-list">
+              <div className="leaderboard-tabs" role="tablist" aria-label="순위 집계 기간">
+                {([['daily', '일간 베스트'], ['weekly', '주간 베스트'], ['all', '전체 베스트']] as const).map(([period, label]) => (
+                  <button
+                    key={period}
+                    id={`leaderboard-tab-${period}`}
+                    className="leaderboard-tab"
+                    type="button"
+                    role="tab"
+                    aria-selected={activeLeaderboard === period}
+                    aria-controls="leaderboard-panel"
+                    onClick={() => setActiveLeaderboard(period)}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+              <div className="leaderboard-list" id="leaderboard-panel" role="tabpanel" aria-labelledby={`leaderboard-tab-${activeLeaderboard}`}>
                 {leaderboardStatus === 'loading' && <p>순위표를 불러오는 중…</p>}
                 {leaderboardStatus === 'error' && (
                   <div className="leaderboard-error" role="alert">
@@ -421,12 +440,12 @@ export default function App() {
                   <div className="leaderboard-row" key={index}>
                     <span className="leaderboard-rank">{index + 1}</span>
                     <div className="leaderboard-player">
-                      <span className="leaderboard-name">{leaderboard[index]?.name ?? '—'}</span>
+                      <span className="leaderboard-name">{visibleLeaderboard[index]?.name ?? '—'}</span>
                       <span className="leaderboard-combo">
-                        최고 콤보 {leaderboard[index]?.maxCombo == null ? '—' : `×${leaderboard[index].maxCombo}`}
+                        최고 콤보 {visibleLeaderboard[index]?.maxCombo == null ? '—' : `×${visibleLeaderboard[index].maxCombo}`}
                       </span>
                     </div>
-                    <strong>{leaderboard[index]?.score.toLocaleString() ?? '—'}</strong>
+                    <strong>{visibleLeaderboard[index]?.score.toLocaleString() ?? '—'}</strong>
                   </div>
                 ))}
               </div>

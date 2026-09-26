@@ -637,9 +637,10 @@ export function useSuika() {
 
   const restart = useCallback(() => {
     const game = useGameStore.getState();
-    if (game.over && game.pendingLeaderboard) {
+    if (game.submittingLeaderboard) return;
+    if (game.over && !game.submittedLeaderboard && game.score > 0) {
       // 등록 없이 다시 시작하면 unknown으로 자동 등록 (재시작은 막지 않음)
-      void game.saveLeaderboardScore('unknown');
+      void game.saveLeaderboardScore('unknown', true);
     }
     const st = g.current;
     if (!st) return;

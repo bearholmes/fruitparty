@@ -1,0 +1,1 @@
+ALTER TABLE `leaderboard` ADD `created_at` text;

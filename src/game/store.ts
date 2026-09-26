@@ -3,9 +3,9 @@ import { randDrop } from './art';
 import { DANGER_SHAKE_MAX } from './constants';
 import {
   fetchLeaderboard,
-  qualifiesForLeaderboard,
+  qualifiesForAnyLeaderboard,
   submitLeaderboardScore,
-  type LeaderboardEntry,
+  type LeaderboardBoards,
 } from './leaderboard';
 
 export interface Toast {
@@ -39,7 +39,7 @@ export interface GameState {
   danger: boolean;
   dangerShakeLeft: number;
   isRecord: boolean;
-  leaderboard: LeaderboardEntry[];
+  leaderboard: LeaderboardBoards;
   pendingLeaderboard: boolean;
   submittedLeaderboard: boolean;
   submittingLeaderboard: boolean;
@@ -57,7 +57,7 @@ export interface GameState {
   setNextLv: (nextLv: number) => void;
   gameOver: () => void;
   refreshLeaderboard: () => Promise<void>;
-  saveLeaderboardScore: (name: string) => Promise<boolean>;
+  saveLeaderboardScore: (name: string, allowUnconfirmed?: boolean) => Promise<boolean>;
   start: () => void;
   setDanger: (danger: boolean) => void;
   setDangerShakeLeft: (n: number) => void;
@@ -86,7 +86,7 @@ export const useGameStore = create<GameState>()((set, get) => ({
   danger: false,
   dangerShakeLeft: DANGER_SHAKE_MAX,
   isRecord: false,
-  leaderboard: [],
+  leaderboard: { daily: [], weekly: [], all: [] },
   pendingLeaderboard: false,
   submittedLeaderboard: false,
   submittingLeaderboard: false,
@@ -128,21 +128,25 @@ export const useGameStore = create<GameState>()((set, get) => ({
       const { over, score, submittedLeaderboard } = get();
       set({
         leaderboard,
-        best: Math.max(get().best, leaderboard[0]?.score ?? 0),
+        best: Math.max(get().best, leaderboard.all[0]?.score ?? 0),
         pendingLeaderboard:
-          over && !submittedLeaderboard && qualifiesForLeaderboard(score, leaderboard),
+          over && !submittedLeaderboard && qualifiesForAnyLeaderboard(score, leaderboard),
         leaderboardStatus: 'ready',
       });
     } catch (error) {
       set({ leaderboardStatus: 'error', leaderboardError: (error as Error).message });
     }
   },
-  saveLeaderboardScore: async (name) => {
+  saveLeaderboardScore: async (name, allowUnconfirmed = false) => {
     const { over, pendingLeaderboard, submittedLeaderboard, submittingLeaderboard, score, maxCombo, submissionId } = get();
-    if (!over || !pendingLeaderboard || submittedLeaderboard || submittingLeaderboard || !submissionId || !name.trim()) return false;
+    if (!over || (!pendingLeaderboard && !allowUnconfirmed) || submittedLeaderboard || submittingLeaderboard || !submissionId || !name.trim() || score <= 0) return false;
     set({ submittingLeaderboard: true, leaderboardError: null });
     try {
       const leaderboard = await submitLeaderboardScore(name.trim(), score, maxCombo, submissionId);
+      if (get().submissionId !== submissionId) {
+        set({ leaderboard });
+        return true;
+      }
       set({
         leaderboard,
         pendingLeaderboard: false,
@@ -152,7 +156,9 @@ export const useGameStore = create<GameState>()((set, get) => ({
       });
       return true;
     } catch (error) {
-      set({ submittingLeaderboard: false, leaderboardError: (error as Error).message });
+      if (get().submissionId === submissionId) {
+        set({ submittingLeaderboard: false, leaderboardError: (error as Error).message });
+      }
       return false;
     }
   },

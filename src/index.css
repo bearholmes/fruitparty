@@ -643,7 +643,30 @@ button:focus-visible {
   min-height: 38px;
   padding: 0;
 }
+.leaderboard-tabs {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px;
+  margin-bottom: 10px;
+}
+.leaderboard-tab {
+  min-height: 40px;
+  padding: 6px 4px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: #fff;
+  color: var(--ink);
+  font: 600 13px/1.2 'Pretendard', sans-serif;
+  cursor: pointer;
+}
+.leaderboard-tab[aria-selected='true'] {
+  border-color: var(--green);
+  background: #eaf3e9;
+  color: var(--green);
+  font-weight: 800;
+}
 .leaderboard-list {
+  min-height: 0;
   overflow-y: auto;
 }
 .leaderboard-row {
