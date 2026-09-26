@@ -78,4 +78,13 @@ describe('leaderboard POST', () => {
     }
     expect(addScore).not.toHaveBeenCalled();
   });
+
+  it('객체가 아닌 JSON 입력은 서버 오류 없이 거절한다', async () => {
+    vi.mocked(addScore).mockClear();
+    for (const body of ['null', '[]', '42']) {
+      const request = new Request('http://localhost/api/leaderboard', { method: 'POST', body });
+      expect((await POST(request)).status).toBe(400);
+    }
+    expect(addScore).not.toHaveBeenCalled();
+  });
 });

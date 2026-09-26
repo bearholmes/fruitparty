@@ -17,6 +17,9 @@ export async function POST(request: Request) {
   } catch {
     return Response.json({ error: '잘못된 요청입니다.' }, { status: 400 });
   }
+  if (!payload || typeof payload !== 'object' || Array.isArray(payload)) {
+    return Response.json({ error: '잘못된 요청입니다.' }, { status: 400 });
+  }
   const { name, score, maxCombo, feverCount, submissionId } = payload as { name?: unknown; score?: unknown; maxCombo?: unknown; feverCount?: unknown; submissionId?: unknown };
   const trimmed = typeof name === 'string' ? name.trim() : '';
   const combo = maxCombo === undefined ? null : maxCombo;

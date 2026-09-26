@@ -4,6 +4,7 @@ import { FRUITS, MAX_LEVEL, loadSprites, makeSprites, randDrop, randFeverDrop } 
 import { useGameStore } from './store';
 import { syncBgm, duckBgm, reshuffleBgm, resetTension } from './bgm';
 import { sfx } from './sfx';
+import { fixedSteps, STEP_MS } from './timing';
 import {
   BOARD_W,
   BOARD_H,
@@ -82,6 +83,7 @@ interface MutableGame {
   pops: PopFx[];
   raf: number;
   last: number;
+  physicsRemainderMs: number;
   toastTimer: number | null;
   dropTimer: number | null;
   shakeTimer: number | null;
@@ -107,6 +109,7 @@ function createMutable(): MutableGame {
     pops: [],
     raf: 0,
     last: 0,
+    physicsRemainderMs: 0,
     toastTimer: null,
     dropTimer: null,
     shakeTimer: null,
@@ -116,6 +119,11 @@ function createMutable(): MutableGame {
 function clearTimer(t: number | null): null {
   if (t !== null) clearTimeout(t);
   return null;
+}
+
+function clampDropX(x: number, level: number): number {
+  const radius = FRUITS[level].r * FRUITS[level].hitbox.x;
+  return Math.max(WALL + radius, Math.min(BOARD_W - WALL - radius, x));
 }
 
 /** 콤보가 높을수록 합체 점수 텍스트를 크게·뜨겁게 */
@@ -135,7 +143,7 @@ export function useSuika() {
   const sprites = useMemo(() => (typeof document === 'undefined' ? [] : makeSprites()), []);
 
   const g = useRef<MutableGame | null>(null);
-  if (!g.current) g.current = createMutable();
+  if (g.current === null) g.current = createMutable();
 
   const showToast = useCallback((msg: string) => {
     const store = useGameStore.getState();
@@ -499,30 +507,36 @@ export function useSuika() {
 
     const loop = (now: number): void => {
       st.raf = requestAnimationFrame(loop);
-      const dt = Math.min((now - st.last) / 1000, 0.033);
+      const elapsedMs = now - st.last;
       st.last = now;
       const gs = store();
       if (!gs.paused && gs.started) {
-        Engine.update(engine, 1000 / 60);
-        if (!st.over) checkOverflow(dt);
-        if (st.feverT > 0) {
-          st.feverT -= dt;
-          if (st.feverT <= 0) {
-            st.feverT = 0;
-            store().setFever(false, 0);
-            if (!st.over) showToast('피버 종료!');
-          } else {
-            const left = Math.ceil(st.feverT);
-            if (store().feverLeft !== left) store().setFever(true, left);
+        const timing = fixedSteps(elapsedMs, st.physicsRemainderMs);
+        st.physicsRemainderMs = timing.remainderMs;
+        for (let step = 0; step < timing.steps; step++) {
+          Engine.update(engine, STEP_MS);
+          if (!st.over) checkOverflow(STEP_MS / 1000);
+          if (st.feverT > 0) {
+            st.feverT -= STEP_MS / 1000;
+            if (st.feverT <= 0) {
+              st.feverT = 0;
+              store().setFever(false, 0);
+              if (!st.over) showToast('피버 종료!');
+            } else {
+              const left = Math.ceil(st.feverT);
+              if (store().feverLeft !== left) store().setFever(true, left);
+            }
+          }
+          if (st.comboTimer > 0) {
+            st.comboTimer--;
+            if (st.comboTimer === 0) {
+              st.combo = 0;
+              store().setCombo(0);
+            }
           }
         }
-        if (st.comboTimer > 0) {
-          st.comboTimer--;
-          if (st.comboTimer === 0) {
-            st.combo = 0;
-            store().setCombo(0);
-          }
-        }
+      } else {
+        st.physicsRemainderMs = 0;
       }
       draw(now / 1000);
     };
@@ -531,10 +545,7 @@ export function useSuika() {
     const setX = (clientX: number): void => {
       const r = canvas.getBoundingClientRect();
       const px = ((clientX - r.left) / r.width) * BOARD_W;
-      st.dropX = Math.max(
-        WALL + FRUITS[st.current].r * FRUITS[st.current].hitbox.x,
-        Math.min(BOARD_W - WALL - FRUITS[st.current].r * FRUITS[st.current].hitbox.x, px),
-      );
+      st.dropX = clampDropX(px, st.current);
     };
     const onMove = (e: MouseEvent): void => {
       setX(e.clientX);
@@ -572,15 +583,9 @@ export function useSuika() {
       )
         e.preventDefault();
       if (e.code === 'ArrowLeft')
-        st.dropX = Math.max(
-          WALL + FRUITS[st.current].r * FRUITS[st.current].hitbox.x,
-          st.dropX - step,
-        );
+        st.dropX = clampDropX(st.dropX - step, st.current);
       if (e.code === 'ArrowRight')
-        st.dropX = Math.min(
-          BOARD_W - WALL - FRUITS[st.current].r * FRUITS[st.current].hitbox.x,
-          st.dropX + step,
-        );
+        st.dropX = clampDropX(st.dropX + step, st.current);
       if (e.code === 'Space' || e.key === 'Enter') {
         (document.activeElement as HTMLElement | null)?.blur?.();
         if (!store().started) startRef.current();
@@ -630,6 +635,7 @@ export function useSuika() {
     const st = g.current;
     const gs = useGameStore.getState();
     if (!st || !st.engine || !st.canDrop || st.over || gs.paused || !gs.started) return;
+    st.dropX = clampDropX(st.dropX, st.current);
     const body = Bodies.circle(st.dropX, DROP_Y, FRUITS[st.current].r, {
       restitution: FRUIT_RESTITUTION,
       friction: 0.5,
@@ -641,6 +647,7 @@ export function useSuika() {
     Body.setVelocity(body, { x: 0, y: 2 });
     Composite.add(st.engine.world, body);
     st.current = st.next;
+    st.dropX = clampDropX(st.dropX, st.current);
     st.next = st.feverT > 0 ? randFeverDrop() : randDrop();
     useGameStore.getState().setNextLv(st.next);
     drawNext(st.next);
@@ -653,7 +660,6 @@ export function useSuika() {
     syncBgm(); // 첫 제스처에 오디오 언락 + BGM 시작
   }, [drawNext]);
   const dropRef = useRef(drop);
-  dropRef.current = drop;
 
   /* 박스 흔들기 — 모든 과일에 랜덤 충격을 가해 배치를 뒤섞음. 쿨다운 적용. 피버 중엔 위험 횟수 미소모 + 강화. */
   const shake = useCallback(() => {
@@ -699,7 +705,6 @@ export function useSuika() {
     showToast('📦 흔들기!');
   }, [showToast]);
   const shakeRef = useRef(shake);
-  shakeRef.current = shake;
 
   const start = useCallback(() => {
     const gs = useGameStore.getState();
@@ -711,7 +716,6 @@ export function useSuika() {
     syncBgm(); // 시작 제스처에 오디오 언락 + BGM 시작
   }, []);
   const startRef = useRef(start);
-  startRef.current = start;
 
   const togglePause = useCallback(() => {
     const gs = useGameStore.getState();
@@ -720,7 +724,6 @@ export function useSuika() {
     sfx.ui();
   }, []);
   const pauseRef = useRef(togglePause);
-  pauseRef.current = togglePause;
 
   const restart = useCallback(() => {
     const game = useGameStore.getState();
@@ -739,6 +742,7 @@ export function useSuika() {
     }
     st.combo = 0;
     st.comboTimer = 0;
+    st.physicsRemainderMs = 0;
     st.over = false;
     st.canDrop = true;
     st.overTime.clear();
@@ -760,18 +764,25 @@ export function useSuika() {
     resetTension(); // 새 게임은 평상시 편곡으로
   }, [drawNext]);
   const restartRef = useRef(restart);
-  restartRef.current = restart;
 
   const moveLeft = useCallback(() => {
     const st = g.current;
     if (!st) return;
-    st.dropX = Math.max(WALL + 20, st.dropX - 24);
+    st.dropX = clampDropX(st.dropX - 24, st.current);
   }, []);
   const moveRight = useCallback(() => {
     const st = g.current;
     if (!st) return;
-    st.dropX = Math.min(BOARD_W - WALL - 20, st.dropX + 24);
+    st.dropX = clampDropX(st.dropX + 24, st.current);
   }, []);
+
+  useEffect(() => {
+    dropRef.current = drop;
+    shakeRef.current = shake;
+    startRef.current = start;
+    pauseRef.current = togglePause;
+    restartRef.current = restart;
+  }, [drop, shake, start, togglePause, restart]);
 
   return {
     canvasRef,
