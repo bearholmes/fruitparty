@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef } from 'react';
 import { Engine, Bodies, Body, Events, Composite } from 'matter-js';
 import { FRUITS, MAX_LEVEL, loadSprites, makeSprites, randDrop } from './art';
 import { useGameStore } from './store';
-import { syncBgm, duckBgm } from './bgm';
+import { syncBgm, duckBgm, reshuffleBgm, resetTension } from './bgm';
 import { sfx } from './sfx';
 import {
   BOARD_W,
@@ -621,6 +621,8 @@ export function useSuika() {
     if (gs.started || gs.over) return;
     gs.start();
     sfx.ui();
+    reshuffleBgm(); // 게임마다 다른 곡
+    resetTension(); // 새 게임은 평상시 편곡으로
     syncBgm(); // 시작 제스처에 오디오 언락 + BGM 시작
   }, []);
   const startRef = useRef(start);
@@ -637,7 +639,10 @@ export function useSuika() {
 
   const restart = useCallback(() => {
     const game = useGameStore.getState();
-    if (game.over && (game.pendingLeaderboard || game.leaderboardStatus !== 'ready')) return;
+    if (game.over && game.pendingLeaderboard) {
+      // 등록 없이 다시 시작하면 unknown으로 자동 등록 (재시작은 막지 않음)
+      void game.saveLeaderboardScore('unknown');
+    }
     const st = g.current;
     if (!st) return;
     const eng = st.engine;
@@ -664,6 +669,8 @@ export function useSuika() {
     useGameStore.getState().reset(st.next);
     drawNext(st.next);
     sfx.ui();
+    reshuffleBgm(); // 게임마다 다른 곡
+    resetTension(); // 새 게임은 평상시 편곡으로
   }, [drawNext]);
   const restartRef = useRef(restart);
   restartRef.current = restart;

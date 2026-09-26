@@ -266,7 +266,7 @@ export default function App() {
                     </div>
                   )}
                   <div className="game-over-actions">
-                    <button className="btn big" onClick={restart} disabled={pendingLeaderboard || leaderboardStatus !== 'ready'}>
+                    <button className="btn big" onClick={restart}>
                       <RotateCcw size={20} /> 다시 하기 (R)
                     </button>
                     <button className="btn" onClick={openLeaderboard}>
@@ -330,7 +330,7 @@ export default function App() {
             <button className="btn sm" onClick={toggleSound}>
               {soundOn ? <Volume2 size={15} /> : <VolumeX size={15} />} {soundOn ? '소리 끄기' : '소리 켜기'}
             </button>
-            <button className="btn sm" onClick={restart} disabled={over && (pendingLeaderboard || leaderboardStatus !== 'ready')}>
+            <button className="btn sm" onClick={restart}>
               <RotateCcw size={15} /> 다시 시작
             </button>
           </div>

@@ -122,6 +122,23 @@ describe('store', () => {
     }
   });
 
+  it('등록을 건너뛰면 unknown으로 저장하고 pending을 해제한다', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(Response.json({ entries: [{ name: 'unknown', score: 50 }] }));
+    vi.stubGlobal('fetch', fetchMock);
+    useGameStore.setState({
+      over: true,
+      score: 50,
+      pendingLeaderboard: true,
+      submissionId: '44444444-4444-4444-8444-444444444444',
+    });
+    expect(await useGameStore.getState().saveLeaderboardScore('unknown')).toBe(true);
+    expect(JSON.parse(fetchMock.mock.calls[0][1].body)).toMatchObject({ name: 'unknown', score: 50 });
+    expect(useGameStore.getState()).toMatchObject({
+      pendingLeaderboard: false,
+      submittedLeaderboard: true,
+    });
+  });
+
   it('gameOver는 over를 세우고 기록 여부를 판정한다', () => {
     useGameStore.setState({ score: 120, best: 100 });
     useGameStore.getState().gameOver();
