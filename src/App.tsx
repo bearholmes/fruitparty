@@ -15,7 +15,7 @@ import {
 } from 'lucide-react';
 import { FRUITS } from './game/art';
 import { previewBgm } from './game/bgm';
-import { FEVER_SCORE_MULT } from './game/constants';
+import { FEVER_DURATION_SEC, FEVER_SCORE_MULT } from './game/constants';
 import type { LeaderboardPeriod } from './game/leaderboard';
 import { sfx } from './game/sfx';
 import { useGameStore } from './game/store';
@@ -214,6 +214,11 @@ export default function App() {
             {feverActive && (
               <div className="fever-banner" aria-live="polite">
                 🔥 FEVER ×{FEVER_SCORE_MULT} · {feverLeft}초
+              </div>
+            )}
+            {feverActive && (
+              <div className="fever-bar" aria-hidden="true">
+                <i style={{ width: `${(feverLeft / FEVER_DURATION_SEC) * 100}%` }} />
               </div>
             )}
             {!started && (

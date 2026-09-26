@@ -28,6 +28,7 @@ import {
   FEVER_COMBO_WINDOW_FRAMES,
   FEVER_BLAST_RADIUS,
   FEVER_BLAST_MAX_LEVEL,
+  FEVER_MERGE_DELAY_SEC,
 } from './constants';
 
 /** 과일 식별용 커스텀 필드를 단 Matter 바디 */
@@ -241,8 +242,10 @@ export function useSuika() {
           for (const [key, p] of st.contactT) {
             if (p.a === b || p.b === b) st.contactT.delete(key);
           }
-          blastPts += Math.round(FRUITS[blv].score * (1 + st.combo * 0.5) * FEVER_SCORE_MULT);
+          const fpts = Math.round(FRUITS[blv].score * (1 + st.combo * 0.5) * FEVER_SCORE_MULT);
+          blastPts += fpts;
           pop(b.position.x, b.position.y, blv);
+          st.mergeAnim.push({ x: b.position.x, y: b.position.y, t: 0, text: `+${fpts}`, size: 18, color: '#b35a00' });
           swept++;
         }
         const total = FINAL_BONUS + blastPts;
@@ -256,6 +259,14 @@ export function useSuika() {
           color: '#e63946',
         });
         pop(mx, my, lv);
+        st.pops.push({ x: mx, y: my, lv, t: -0.25 }, { x: mx, y: my, lv, t: -0.5 });
+        const holder = canvasRef.current?.parentElement;
+        if (holder) {
+          holder.classList.remove('fever-flash');
+          void holder.clientWidth; // 애니메이션 리트리거
+          holder.classList.add('fever-flash');
+          setTimeout(() => holder.classList.remove('fever-flash'), 650);
+        }
         st.feverT = FEVER_DURATION_SEC;
         store().setFever(true, FEVER_DURATION_SEC);
         showToast(
@@ -313,8 +324,9 @@ export function useSuika() {
       for (const key of [...st.contactT.keys()]) {
         if (!seen.has(key)) st.contactT.delete(key);
       }
+      const need = st.feverT > 0 ? FEVER_MERGE_DELAY_SEC : MERGE_DELAY_SEC;
       for (const { a, b, t } of st.contactT.values()) {
-        if (t >= MERGE_DELAY_SEC) doMerge(a, b);
+        if (t >= need) doMerge(a, b);
       }
     };
     Events.on(engine, 'collisionActive', onActive);
@@ -446,6 +458,24 @@ export function useSuika() {
       }
       for (let i = st.pops.length - 1; i >= 0; i--) {
         if (st.pops[i].t >= 1) st.pops.splice(i, 1);
+      }
+      if (st.feverT > 0) {
+        ctx.save();
+        ctx.strokeStyle = '#f6a817';
+        ctx.lineWidth = 2;
+        for (let i = 0; i < 16; i++) {
+          const sx = WALL + 24 + ((i * 137) % (BOARD_W - WALL * 2 - 48));
+          const sy = 56 + ((i * 211) % (BOARD_H - 160));
+          ctx.globalAlpha = Math.max(0.1, 0.35 + 0.3 * Math.sin(t * 7 + i * 2.4));
+          const r = 3 + (i % 3);
+          ctx.beginPath();
+          ctx.moveTo(sx - r, sy);
+          ctx.lineTo(sx + r, sy);
+          ctx.moveTo(sx, sy - r);
+          ctx.lineTo(sx, sy + r);
+          ctx.stroke();
+        }
+        ctx.restore();
       }
 
       if (!st.over && st.dangerT > DANGER_AFTER_SEC) {
