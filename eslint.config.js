@@ -7,7 +7,7 @@ export default defineConfig([
   ...nextTs,
   globalIgnores(['.next/**', '.sites-checkout/**', 'build/**', 'coverage/**', 'dist/**', 'next-env.d.ts']),
   {
-    files: ['src/game/useSuika.ts'],
+    files: ['src/game/useGameEngine.ts'],
     // Input handlers read the latest callbacks through refs owned by this game hook.
     rules: { 'react-hooks/immutability': 'off' },
   },

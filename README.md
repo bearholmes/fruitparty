@@ -59,7 +59,7 @@ npm run build    # 프로덕션 빌드
 src/
   App.tsx          # 게임 UI (보드, 도감, 리더보드, 설정)
   game/
-    useSuika.ts    # 게임 루프·물리·합체·피버 로직
+    useGameEngine.ts    # 게임 루프·물리·합체·피버 로직
     store.ts       # Zustand 전역 상태
     art.ts         # 과일 데이터·스프라이트
     constants.ts   # 보드 치수·타이밍 상수

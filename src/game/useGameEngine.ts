@@ -165,7 +165,7 @@ function clampDropX(x: number, level: number): number {
    규칙은 physics/, 렌더는 render/, 입력은 input.ts가 담당.
    UI 상태는 zustand 스토어가 소유, 루프·충돌 콜백에선 getState()로 접근.
    반환은 canvas ref와 액션만 (점수 등은 App에서 스토어 셀렉터로 구독). */
-export function useSuika() {
+export function useGameEngine() {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const nextCanvasRef = useRef<HTMLCanvasElement | null>(null);
   const nextCtxRef = useRef<CanvasRenderingContext2D | null>(null);
