@@ -25,12 +25,12 @@ describe('shot', () => {
     expect(formatShotDate(null)).toMatch(/^\d{4}\. \d{1,2}\. \d{1,2}\. \d{2}:\d{2}$/);
   });
 
-  it('푸터에 스코어·베스트·최대콤보·피버횟수·종료시간을 담는다', () => {
+  it('푸터에 스코어·최대콤보·피버횟수·종료시간을 담는다', () => {
     const ts = new Date(2026, 8, 27, 22, 5).getTime();
     const lines = buildShotLines({ score: 1234, best: 5678, maxCombo: 12, feverCount: 3, gameOverAt: ts });
     expect(lines).toHaveLength(3);
     expect(lines[0].text).toBe('SCORE 1234');
-    expect(lines[1].text).toBe('BEST 5678 · 최대콤보 12 · 피버 3회');
+    expect(lines[1].text).toBe('MAX COMBO 12 · FEVER 3');
     expect(lines[2].text).toBe('2026. 9. 27. 22:05');
     for (const line of lines) {
       expect(line.y + 8).toBeLessThanOrEqual(SHOT_FOOTER_H);

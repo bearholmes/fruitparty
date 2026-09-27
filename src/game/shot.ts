@@ -34,7 +34,7 @@ export function buildShotLines(stats: ShotStats): ShotLine[] {
   return [
     { text: `SCORE ${stats.score}`, px: 44, weight: 800, color: SHOT_INK, y: 52 },
     {
-      text: `BEST ${stats.best} · 최대콤보 ${stats.maxCombo} · 피버 ${stats.feverCount}회`,
+      text: `MAX COMBO ${stats.maxCombo} · FEVER ${stats.feverCount}`,
       px: 24,
       weight: 800,
       color: SHOT_INK,

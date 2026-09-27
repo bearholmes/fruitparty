@@ -1,6 +1,5 @@
 import { useState } from 'react';
 import { Camera, Frown, RotateCcw, Trophy } from 'lucide-react';
-import { formatShotDate } from '../game/shot';
 import { useGameStore } from '../game/store';
 
 const PLAYER_NAME_KEY = 'fruitparty.player-name';
@@ -24,7 +23,6 @@ export function GameOverOverlay({ score, onRestart, onOpenLeaderboard, onDownloa
   const [playerName, setPlayerName] = useState(savedPlayerName);
   const maxCombo = useGameStore((s) => s.maxCombo);
   const feverCount = useGameStore((s) => s.feverCount);
-  const gameOverAt = useGameStore((s) => s.gameOverAt);
   const isRecord = useGameStore((s) => s.isRecord);
   const pendingLeaderboard = useGameStore((s) => s.pendingLeaderboard);
   const submittingLeaderboard = useGameStore((s) => s.submittingLeaderboard);
@@ -71,10 +69,6 @@ export function GameOverOverlay({ score, onRestart, onOpenLeaderboard, onDownloa
           <div>
             <dt>피버</dt>
             <dd>{feverCount}회</dd>
-          </div>
-          <div className="wide">
-            <dt>종료</dt>
-            <dd>{formatShotDate(gameOverAt)}</dd>
           </div>
         </dl>
         {pendingLeaderboard && (
