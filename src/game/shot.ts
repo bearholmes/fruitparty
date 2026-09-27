@@ -32,7 +32,7 @@ export interface ShotLine {
 
 export function buildShotLines(stats: ShotStats): ShotLine[] {
   return [
-    { text: `SCORE ${stats.score}`, px: 44, weight: 800, color: SHOT_INK, y: 52 },
+    { text: `SCORE ${stats.score}`, px: 36, weight: 800, color: SHOT_INK, y: 52 },
     {
       text: `MAX COMBO ${stats.maxCombo} · FEVER ${stats.feverCount}`,
       px: 24,
