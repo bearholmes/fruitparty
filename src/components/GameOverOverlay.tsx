@@ -100,7 +100,7 @@ export function GameOverOverlay({ score, onRestart, onOpenLeaderboard, onDownloa
           </div>
         )}
         <div className="game-over-actions">
-          <button className="btn big" onClick={onRestart} disabled={submittingLeaderboard}>
+          <button className="btn big" onClick={onRestart} disabled={submittingLeaderboard || leaderboardStatus === 'loading'}>
             <RotateCcw size={20} /> 다시 하기
           </button>
           <button className="btn" onClick={onOpenLeaderboard}>

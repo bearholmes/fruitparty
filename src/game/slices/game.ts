@@ -5,6 +5,8 @@ import type { GameState } from '../store';
 import { randDrop } from '../fruits';
 import { DANGER_SHAKE_MAX } from '../config/input';
 
+const PERSONAL_BEST_KEY = 'fruitparty.personal-best';
+
 export interface Toast {
   msg: string;
   key: number;
@@ -30,6 +32,7 @@ export interface GameSlice {
   feverLeft: number;
   feverCount: number;
   addScore: (n: number) => void;
+  loadPersonalBest: () => void;
   setCombo: (combo: number) => void;
   setNextLv: (nextLv: number) => void;
   gameOver: () => void;
@@ -69,22 +72,37 @@ export const createGameSlice: StateCreator<GameState, [], [], GameSlice> = (set,
   feverLeft: 0,
   feverCount: 0,
 
-  addScore: (n) => {
-    const score = get().score + Math.round(n);
-    let { best } = get();
-    if (score > best) best = score;
-    set({ score, best });
+  addScore: (n) => set({ score: get().score + Math.round(n) }),
+  loadPersonalBest: () => {
+    try {
+      const saved = Number(localStorage.getItem(PERSONAL_BEST_KEY));
+      if (Number.isSafeInteger(saved) && saved >= 0) set({ best: saved });
+    } catch {
+      // 저장소를 사용할 수 없어도 게임은 계속한다.
+    }
   },
   setCombo: (combo) => set({ combo, maxCombo: Math.max(get().maxCombo, combo) }),
   setNextLv: (nextLv) => set({ nextLv }),
   gameOver: () => {
     if (get().over) return;
     const { score, best } = get();
+    const isRecord = score > best;
+    if (isRecord) {
+      try {
+        localStorage.setItem(PERSONAL_BEST_KEY, String(score));
+      } catch {
+        // 저장소를 사용할 수 없어도 현재 화면의 개인 베스트는 갱신한다.
+      }
+    }
     set({
+      best: isRecord ? score : best,
       over: true,
       gameOverAt: Date.now(),
+      // React의 조회 effect가 실행되기 전부터 재시작을 막는다.
+      leaderboardStatus: 'loading',
+      leaderboardError: null,
       paused: false,
-      isRecord: score > 0 && score >= best,
+      isRecord,
       pendingLeaderboard: false,
       submittedLeaderboard: false,
       submittingLeaderboard: false,

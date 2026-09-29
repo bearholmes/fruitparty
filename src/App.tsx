@@ -30,10 +30,12 @@ export default function App() {
   const over = useGameStore((s) => s.over);
   const refreshLeaderboard = useGameStore((s) => s.refreshLeaderboard);
   const loadAudioSettings = useGameStore((s) => s.loadAudioSettings);
+  const loadPersonalBest = useGameStore((s) => s.loadPersonalBest);
 
   useEffect(() => {
     loadAudioSettings();
-  }, [loadAudioSettings]);
+    loadPersonalBest();
+  }, [loadAudioSettings, loadPersonalBest]);
 
   const openPanel = useCallback(() => {
     const game = useGameStore.getState();

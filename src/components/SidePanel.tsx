@@ -11,6 +11,7 @@ interface SidePanelProps {
 }
 
 export function SidePanel({ open, onClose, onRestart }: SidePanelProps) {
+  const restartDisabled = useGameStore((s) => s.submittingLeaderboard || (s.over && s.leaderboardStatus === 'loading'));
   const evoUrls = useGameStore((s) => s.evoUrls);
   const soundOn = useGameStore((s) => s.soundOn);
   const bgmVolume = useGameStore((s) => s.bgmVolume);
@@ -30,7 +31,7 @@ export function SidePanel({ open, onClose, onRestart }: SidePanelProps) {
         <button className="btn sm" onClick={toggleSound} aria-pressed={soundOn}>
           {soundOn ? <Volume2 size={15} /> : <VolumeX size={15} />} 소리 {soundOn ? 'ON' : 'OFF'}
         </button>
-        <button className="btn sm" onClick={onRestart}>
+        <button className="btn sm" onClick={onRestart} disabled={restartDisabled}>
           <RotateCcw size={15} /> 다시 시작
         </button>
       </div>

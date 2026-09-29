@@ -43,6 +43,11 @@ function freshState() {
 describe('store', () => {
   beforeEach(() => {
     vi.unstubAllGlobals();
+    const values = new Map<string, string>();
+    vi.stubGlobal('localStorage', {
+      getItem: (key: string) => values.get(key) ?? null,
+      setItem: (key: string, value: string) => values.set(key, value),
+    });
     freshState();
   });
 
@@ -57,9 +62,16 @@ describe('store', () => {
     expect(useGameStore.getState().score).toBe(16);
   });
 
-  it('최고기록 경신 시 best를 갱신한다', () => {
+  it('게임 도중에는 개인 베스트를 갱신하지 않는다', () => {
     useGameStore.getState().addScore(100);
-    expect(useGameStore.getState().best).toBe(100);
+    expect(useGameStore.getState().best).toBe(0);
+    expect(localStorage.getItem('fruitparty.personal-best')).toBeNull();
+  });
+
+  it('저장된 개인 베스트를 불러온다', () => {
+    localStorage.setItem('fruitparty.personal-best', '150');
+    useGameStore.getState().loadPersonalBest();
+    expect(useGameStore.getState().best).toBe(150);
   });
 
   it('DB 순위표를 읽고 게임오버 점수의 등록 자격을 판정한다', async () => {
@@ -68,10 +80,53 @@ describe('store', () => {
     await useGameStore.getState().refreshLeaderboard();
     expect(useGameStore.getState()).toMatchObject({
       leaderboard: { daily: [], weekly: [], all: [{ name: '철수', score: 100, maxCombo: null, feverCount: null }] },
-      best: 100,
+      best: 0,
       pendingLeaderboard: true,
       leaderboardStatus: 'ready',
     });
+  });
+
+  it('게임오버 즉시 조회 상태가 되고 응답 후 이름 입력 자격이 유지된다', async () => {
+    let resolveRequest!: (response: Response) => void;
+    vi.stubGlobal('fetch', vi.fn(() => new Promise<Response>((resolve) => { resolveRequest = resolve; })));
+    useGameStore.setState({ score: 500, leaderboardStatus: 'ready' });
+    useGameStore.getState().gameOver();
+    expect(useGameStore.getState().leaderboardStatus).toBe('loading');
+    const refresh = useGameStore.getState().refreshLeaderboard();
+    expect(useGameStore.getState()).toMatchObject({ over: true, score: 500, submittedLeaderboard: false });
+    resolveRequest(Response.json({ boards: boards('기존 기록', 100) }));
+    await refresh;
+    expect(useGameStore.getState()).toMatchObject({ over: true, score: 500, leaderboardStatus: 'ready', pendingLeaderboard: true });
+  });
+
+  it('게임오버 이전의 조회 응답이 현재 순위 확인을 끝내지 않는다', async () => {
+    const responses: Array<(response: Response) => void> = [];
+    vi.stubGlobal('fetch', vi.fn(() => new Promise<Response>((resolve) => { responses.push(resolve); })));
+    const beforeGameOver = useGameStore.getState().refreshLeaderboard();
+    useGameStore.setState({ score: 500 });
+    useGameStore.getState().gameOver();
+    responses[0](Response.json({ boards: boards('이전', 100) }));
+    await beforeGameOver;
+    expect(useGameStore.getState().leaderboardStatus).toBe('loading');
+    const current = useGameStore.getState().refreshLeaderboard();
+    const newer = useGameStore.getState().refreshLeaderboard();
+    responses[1](Response.json({ boards: boards('오래된 결과', 100) }));
+    await current;
+    expect(useGameStore.getState().leaderboardStatus).toBe('loading');
+    responses[2](Response.json({ boards: boards('최신 결과', 200) }));
+    await newer;
+    expect(useGameStore.getState()).toMatchObject({ leaderboardStatus: 'ready', pendingLeaderboard: true });
+  });
+
+  it('조회 실패 시 로딩을 해제하고 재시도할 수 있다', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockRejectedValueOnce(new Error('network'))
+      .mockResolvedValueOnce(Response.json({ boards: boards('기존', 100) })));
+    useGameStore.setState({ score: 500 });
+    useGameStore.getState().gameOver();
+    await useGameStore.getState().refreshLeaderboard();
+    expect(useGameStore.getState()).toMatchObject({ over: true, leaderboardStatus: 'error' });
+    await useGameStore.getState().refreshLeaderboard();
+    expect(useGameStore.getState()).toMatchObject({ over: true, leaderboardStatus: 'ready', pendingLeaderboard: true });
   });
 
   it('이름과 점수를 DB에 제출하고 중복 등록을 막는다', async () => {
@@ -150,7 +205,7 @@ describe('store', () => {
     });
   });
 
-  it('순위 확인 전에 다시 시작해도 unknown을 보내고 이전 판의 응답이 새 판 상태를 바꾸지 않는다', async () => {
+  it('등록을 건너뛴 이전 판의 응답이 새 판 상태를 바꾸지 않는다', async () => {
     let resolveRequest!: (response: Response) => void;
     const fetchMock = vi.fn().mockImplementation(() => new Promise<Response>((resolve) => {
       resolveRequest = resolve;
@@ -185,6 +240,21 @@ describe('store', () => {
     expect(s.over).toBe(true);
     expect(s.paused).toBe(false);
     expect(s.isRecord).toBe(true);
+    expect(s.best).toBe(120);
+    expect(localStorage.getItem('fruitparty.personal-best')).toBe('120');
+  });
+
+  it('동점이나 낮은 점수는 개인 베스트를 덮어쓰지 않는다', () => {
+    localStorage.setItem('fruitparty.personal-best', '120');
+    useGameStore.getState().loadPersonalBest();
+    useGameStore.setState({ score: 120 });
+    useGameStore.getState().gameOver();
+    expect(useGameStore.getState()).toMatchObject({ best: 120, isRecord: false });
+    useGameStore.getState().reset(1);
+    useGameStore.setState({ score: 80 });
+    useGameStore.getState().gameOver();
+    expect(useGameStore.getState()).toMatchObject({ best: 120, isRecord: false });
+    expect(localStorage.getItem('fruitparty.personal-best')).toBe('120');
   });
 
   it('gameOver는 종료시간을 기록하고 reset하면 지운다', () => {
