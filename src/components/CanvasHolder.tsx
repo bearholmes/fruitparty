@@ -41,7 +41,7 @@ export function CanvasHolder({
       )}
       {feverActive && (
         <div className="fever-bar" aria-hidden="true">
-          <i style={{ width: `${(feverLeft / FEVER_DURATION_SEC) * 100}%` }} />
+          <i style={{ width: `${Math.min(100, (feverLeft / FEVER_DURATION_SEC) * 100)}%` }} />
         </div>
       )}
       {!started && <StartOverlay onStart={onStart} />}

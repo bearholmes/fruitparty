@@ -7,6 +7,7 @@ import { syncBgm, duckBgm, reshuffleBgm, resetTension } from './bgm';
 import { sfx } from './sfx';
 import { fixedSteps, STEP_MS } from './timing';
 import { createFruitBody, createWalls, collectFruitBodies, type FruitBody } from './physics/bodies';
+import { refreshFeverT } from './physics/fever';
 import { mergeScore } from './physics/scoring';
 import { ContactTracker } from './physics/contacts';
 import { updateOverflow } from './physics/overflow';
@@ -44,6 +45,7 @@ import {
   SHAKE_VY_VAR,
   SHAKE_SPIN,
   FEVER_DURATION_SEC,
+  FEVER_MAX_SEC,
   FEVER_SCORE_MULT,
   FEVER_DROP_COOLDOWN_MS,
   FEVER_COMBO_WINDOW_FRAMES,
@@ -302,12 +304,19 @@ export function useGameEngine() {
           holder.classList.add('fever-flash');
           setTimeout(() => holder.classList.remove('fever-flash'), 650);
         }
-        st.feverT = FEVER_DURATION_SEC;
-        store().startFever(FEVER_DURATION_SEC);
+        /* 피버 중 단감 합체는 리셋이 아닌 연장 — 정리는 동일, 상한에서 잘림 */
+        const extending = st.feverT > 0;
+        const prevLeft = Math.ceil(st.feverT);
+        st.feverT = refreshFeverT(st.feverT);
+        const left = Math.ceil(st.feverT);
+        store().startFever(left);
+        const sweptMsg = swept > 0 ? `·${swept}개 정리!` : '!';
         showToast(
-          swept > 0
-            ? `🔥 피버타임 ${FEVER_DURATION_SEC}초! 점수 ${FEVER_SCORE_MULT}배·${swept}개 정리!`
-            : `🔥 피버타임 ${FEVER_DURATION_SEC}초! 점수 ${FEVER_SCORE_MULT}배!`,
+          !extending
+            ? `🔥 피버타임 ${FEVER_DURATION_SEC}초! 점수 ${FEVER_SCORE_MULT}배${sweptMsg}`
+            : left > prevLeft
+              ? `🔥 피버 ${left - prevLeft}초 연장${sweptMsg}`
+              : `🔥 피버 최대 ${FEVER_MAX_SEC}초 유지${sweptMsg}`,
         );
         st.combo++;
         store().setCombo(st.combo);
