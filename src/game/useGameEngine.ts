@@ -54,6 +54,7 @@ import {
   FEVER_MERGE_DELAY_SEC,
   FEVER_SHAKE_MULT,
   FEVER_SHAKE_COOLDOWN_MS,
+  NEXT_PREVIEW_COUNT,
 } from './constants';
 
 interface MergeAnim {
@@ -80,7 +81,7 @@ interface CollisionEvent {
 interface MutableGame {
   engine: Engine | null;
   current: number;
-  next: number;
+  nextQueue: number[];
   dropX: number;
   canDrop: boolean;
   over: boolean;
@@ -107,7 +108,7 @@ function createMutable(): MutableGame {
   return {
     engine: null,
     current: randDrop(),
-    next: useGameStore.getState().nextLv,
+    nextQueue: [...useGameStore.getState().nextQueue],
     dropX: BOARD_W / 2,
     canDrop: true,
     over: false,
@@ -150,7 +151,12 @@ function resetMutable(st: MutableGame): void {
   st.dropTimer = clearTimer(st.dropTimer);
   st.shakeTimer = clearTimer(st.shakeTimer);
   st.current = randDrop();
-  st.next = randDrop();
+  st.nextQueue = randNextQueue();
+}
+
+/** 새 NEXT 큐를 뽑는다 — 재시작·초기화 시점엔 피버가 꺼져 있어 일반 풀로 고정 */
+function randNextQueue(): number[] {
+  return Array.from({ length: NEXT_PREVIEW_COUNT }, () => randDrop());
 }
 
 function clearTimer(t: number | null): null {
@@ -186,17 +192,31 @@ export function useGameEngine() {
   }, []);
 
   const drawNext = useCallback(
-    (lv: number) => {
+    (queue: number[]) => {
       const cv = nextCanvasRef.current;
       if (!cv) return;
       if (!nextCtxRef.current) nextCtxRef.current = cv.getContext('2d');
       const c = nextCtxRef.current;
       if (!c) return;
-      const s = sprites[lv];
-      c.clearRect(0, 0, 96, 96);
-      const k = 84 / s.S;
-      const w = s.S * k;
-      c.drawImage(s.cv, (96 - w) / 2, (96 - w) / 2 - 4 * k, w, w);
+      c.clearRect(0, 0, cv.width, cv.height);
+      if (queue.length === 0) return;
+      /* 오른쪽이 다음 차례 — 역순으로 노출 */
+      const order = [...queue].reverse();
+      const cell = cv.width / order.length;
+      order.forEach((lv, i) => {
+        const s = sprites[lv];
+        const k = (cell - 12) / s.S;
+        const w = s.S * k;
+        c.drawImage(s.cv, i * cell + (cell - w) / 2, (cv.height - w) / 2 - 4 * k, w, w);
+      });
+      /* 과일 사이 진행 방향 표시 */
+      c.fillStyle = '#728176';
+      c.font = `800 ${Math.round(cell * 0.22)}px sans-serif`;
+      c.textAlign = 'center';
+      c.textBaseline = 'middle';
+      for (let i = 1; i < order.length; i++) {
+        c.fillText('>', i * cell, cv.height / 2);
+      }
     },
     [sprites],
   );
@@ -208,7 +228,7 @@ export function useGameEngine() {
     loadSprites(sprites)
       .then(() => {
         if (!active) return;
-        drawNext(g.current?.next ?? 0);
+        drawNext(g.current?.nextQueue ?? []);
       })
       .catch((error: unknown) => console.error(error));
     return () => {
@@ -567,7 +587,7 @@ export function useGameEngine() {
       }
     });
 
-    drawNext(st.next);
+    drawNext(st.nextQueue);
     st.last = performance.now();
     st.raf = requestAnimationFrame(loop);
 
@@ -592,11 +612,11 @@ export function useGameEngine() {
     const body = createFruitBody(st.dropX, DROP_Y, st.current, DROP_FRICTION);
     Body.setVelocity(body, { x: 0, y: DROP_INITIAL_VY });
     Composite.add(st.engine.world, body);
-    st.current = st.next;
-    st.dropX = clampDropX(st.dropX, st.current);
-    st.next = st.feverT > 0 ? randFeverDrop() : randDrop();
-    useGameStore.getState().setNextLv(st.next);
-    drawNext(st.next);
+    const [head, ...rest] = st.nextQueue;
+    st.current = head ?? randDrop();
+    st.nextQueue = [...rest, st.feverT > 0 ? randFeverDrop() : randDrop()];
+    useGameStore.getState().setNextQueue([...st.nextQueue]);
+    drawNext(st.nextQueue);
     st.canDrop = false;
     st.dropTimer = clearTimer(st.dropTimer);
     st.dropTimer = window.setTimeout(() => {
@@ -684,8 +704,8 @@ export function useGameEngine() {
         .forEach((b) => Composite.remove(eng.world, b));
     }
     resetMutable(st);
-    useGameStore.getState().reset(st.next);
-    drawNext(st.next);
+    useGameStore.getState().reset([...st.nextQueue]);
+    drawNext(st.nextQueue);
     sfx.ui();
     reshuffleBgm(); // 게임마다 다른 곡
     resetTension(); // 새 게임은 평상시 편곡으로

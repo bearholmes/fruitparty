@@ -13,7 +13,7 @@ function freshState() {
     best: 0,
     combo: 0,
     maxCombo: 0,
-    nextLv: 0,
+    nextQueue: [0, 0, 0],
     over: false,
     gameOverAt: null,
     paused: false,
@@ -221,7 +221,7 @@ describe('store', () => {
 
     const saving = useGameStore.getState().saveLeaderboardScore('unknown', true);
     expect(JSON.parse(fetchMock.mock.calls[0][1].body)).toMatchObject({ name: 'unknown', score: 50, maxCombo: 4 });
-    useGameStore.getState().reset(1);
+    useGameStore.getState().reset([1, 1, 1]);
     resolveRequest(Response.json({ boards: boards('unknown', 50) }));
     expect(await saving).toBe(true);
     expect(useGameStore.getState()).toMatchObject({
@@ -250,7 +250,7 @@ describe('store', () => {
     useGameStore.setState({ score: 120 });
     useGameStore.getState().gameOver();
     expect(useGameStore.getState()).toMatchObject({ best: 120, isRecord: false });
-    useGameStore.getState().reset(1);
+    useGameStore.getState().reset([1, 1, 1]);
     useGameStore.setState({ score: 80 });
     useGameStore.getState().gameOver();
     expect(useGameStore.getState()).toMatchObject({ best: 120, isRecord: false });
@@ -264,7 +264,7 @@ describe('store', () => {
     const gameOverAt = useGameStore.getState().gameOverAt;
     expect(gameOverAt).not.toBeNull();
     expect(gameOverAt as number).toBeGreaterThanOrEqual(before);
-    useGameStore.getState().reset(1);
+    useGameStore.getState().reset([1, 1, 1]);
     expect(useGameStore.getState().gameOverAt).toBeNull();
   });
 
@@ -286,7 +286,7 @@ describe('store', () => {
       danger: true,
       dangerShakeLeft: 0,
     });
-    useGameStore.getState().reset(3);
+    useGameStore.getState().reset([1, 2, 3]);
     const s = useGameStore.getState();
     expect(s).toMatchObject({
       score: 0,
@@ -296,7 +296,7 @@ describe('store', () => {
       paused: false,
       isRecord: false,
       toast: null,
-      nextLv: 3,
+      nextQueue: [1, 2, 3],
       canShake: true,
       started: true,
       danger: false,
@@ -316,6 +316,8 @@ describe('store', () => {
     expect(useGameStore.getState().combo).toBe(4);
     s.setCombo(0);
     expect(useGameStore.getState().maxCombo).toBe(4);
+    s.setNextQueue([2, 1, 0]);
+    expect(useGameStore.getState().nextQueue).toEqual([2, 1, 0]);
     s.showToast('테스트');
     expect(useGameStore.getState().toast?.msg).toBe('테스트');
     s.hideToast();
@@ -359,7 +361,7 @@ describe('store', () => {
     s.setFever(false, 0);
     s.startFever(30);
     expect(useGameStore.getState()).toMatchObject({ feverActive: true, feverLeft: 30, feverCount: 2 });
-    s.reset(1);
+    s.reset([1, 1, 1]);
     expect(useGameStore.getState()).toMatchObject({ feverActive: false, feverLeft: 0, feverCount: 0 });
   });
 });

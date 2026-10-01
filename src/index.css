@@ -137,7 +137,7 @@ button:focus-visible {
   color: var(--muted);
 }
 #nextCanvas {
-  width: 36px;
+  width: 108px;
   height: 36px;
 }
 .canvas-holder {
@@ -856,7 +856,7 @@ button:focus-visible {
     font-size: 10px;
   }
   #nextCanvas {
-    width: 38px;
+    width: 114px;
     height: 38px;
   }
   .mobile-info {

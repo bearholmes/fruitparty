@@ -1,5 +1,6 @@
 import { Pause, Play, Settings } from 'lucide-react';
 import type { RefObject } from 'react';
+import { NEXT_PREVIEW_COUNT } from '../game/config/ui';
 import { useGameStore } from '../game/store';
 import { ComboBadge } from './ComboBadge';
 
@@ -39,7 +40,7 @@ export function ScoreHeader({
       </div>
       <ComboBadge combo={combo} />
       <div className="next-pill">
-        NEXT <canvas id="nextCanvas" ref={nextCanvasRef} width="96" height="96"></canvas>
+        NEXT <canvas id="nextCanvas" ref={nextCanvasRef} width={96 * NEXT_PREVIEW_COUNT} height="96"></canvas>
       </div>
       <div className="head-actions">
         <button

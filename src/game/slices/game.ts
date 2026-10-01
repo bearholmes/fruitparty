@@ -4,6 +4,7 @@ import type { StateCreator } from 'zustand';
 import type { GameState } from '../store';
 import { randDrop } from '../fruits';
 import { DANGER_SHAKE_MAX } from '../config/input';
+import { NEXT_PREVIEW_COUNT } from '../config/ui';
 
 const PERSONAL_BEST_KEY = 'fruitparty.personal-best';
 
@@ -17,7 +18,7 @@ export interface GameSlice {
   best: number;
   combo: number;
   maxCombo: number;
-  nextLv: number;
+  nextQueue: number[];
   over: boolean;
   gameOverAt: number | null;
   paused: boolean;
@@ -34,7 +35,7 @@ export interface GameSlice {
   addScore: (n: number) => void;
   loadPersonalBest: () => void;
   setCombo: (combo: number) => void;
-  setNextLv: (nextLv: number) => void;
+  setNextQueue: (nextQueue: number[]) => void;
   gameOver: () => void;
   start: () => void;
   setDanger: (danger: boolean) => void;
@@ -46,7 +47,7 @@ export interface GameSlice {
   setCanShake: (v: boolean) => void;
   setFever: (active: boolean, left: number) => void;
   startFever: (duration: number) => void;
-  reset: (nextLv: number) => void;
+  reset: (nextQueue: number[]) => void;
 }
 
 /* 토스트 키 — Date.now() 대신 단조 카운터 (동일 틱 중복 시 충돌 방지) */
@@ -57,7 +58,7 @@ export const createGameSlice: StateCreator<GameState, [], [], GameSlice> = (set,
   best: 0,
   combo: 0,
   maxCombo: 0,
-  nextLv: randDrop(),
+  nextQueue: Array.from({ length: NEXT_PREVIEW_COUNT }, () => randDrop()),
   over: false,
   gameOverAt: null,
   paused: false,
@@ -82,7 +83,7 @@ export const createGameSlice: StateCreator<GameState, [], [], GameSlice> = (set,
     }
   },
   setCombo: (combo) => set({ combo, maxCombo: Math.max(get().maxCombo, combo) }),
-  setNextLv: (nextLv) => set({ nextLv }),
+  setNextQueue: (nextQueue) => set({ nextQueue }),
   gameOver: () => {
     if (get().over) return;
     const { score, best } = get();
@@ -119,7 +120,7 @@ export const createGameSlice: StateCreator<GameState, [], [], GameSlice> = (set,
   setCanShake: (canShake) => set({ canShake }),
   setFever: (feverActive, feverLeft) => set({ feverActive, feverLeft }),
   startFever: (duration) => set((state) => ({ feverActive: true, feverLeft: duration, feverCount: state.feverCount + 1 })),
-  reset: (nextLv) =>
+  reset: (nextQueue) =>
     set({
       score: 0,
       combo: 0,
@@ -139,7 +140,7 @@ export const createGameSlice: StateCreator<GameState, [], [], GameSlice> = (set,
       submittingLeaderboard: false,
       submissionId: null,
       toast: null,
-      nextLv,
+      nextQueue,
       canShake: true,
     }),
 });

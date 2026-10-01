@@ -429,7 +429,7 @@ describe('bgm', () => {
     syncBgm(); // 구독이 호출
     vi.advanceTimersByTime(500);
     expect(player().playing).toBe(false);
-    useGameStore.getState().reset(1);
+    useGameStore.getState().reset([1, 1, 1]);
     syncBgm(); // 구독이 호출
     expect(player().playing).toBe(true);
     const n = fx().oscs.length;
@@ -445,7 +445,7 @@ describe('bgm', () => {
     syncBgm();
     vi.advanceTimersByTime(100); // 페이드아웃 진행 중
     expect(player().playing).toBe(true);
-    useGameStore.getState().reset(1);
+    useGameStore.getState().reset([1, 1, 1]);
     syncBgm();
     vi.advanceTimersByTime(1000);
     expect(player().playing).toBe(true);
@@ -455,7 +455,7 @@ describe('bgm', () => {
   it('플레이 중 다시 시작하면 BGM이 계속 재생된다', () => {
     syncBgm();
     vi.advanceTimersByTime(1000);
-    useGameStore.getState().reset(1);
+    useGameStore.getState().reset([1, 1, 1]);
     syncBgm();
     expect(player().playing).toBe(true);
     const n = fx().oscs.length;
@@ -470,7 +470,7 @@ describe('bgm', () => {
     syncBgm();
     vi.advanceTimersByTime(500);
     expect(player().playing).toBe(false);
-    useGameStore.getState().reset(1);
+    useGameStore.getState().reset([1, 1, 1]);
     syncBgm();
     vi.advanceTimersByTime(1000);
     expect(player().playing).toBe(true);
