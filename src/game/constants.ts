@@ -2,6 +2,7 @@
    값 변경은 src/game/config/ 아래 해당 도메인 파일을 볼 것. */
 
 export * from './config/board';
+export * from './config/drops';
 export * from './config/physics';
 export * from './config/scoring';
 export * from './config/fever';

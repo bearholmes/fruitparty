@@ -3,6 +3,7 @@ import {
   BOARD_W,
   DEADLINE_Y,
   OVER_LIMIT_SEC,
+  MAX_DROP_LEVEL,
   DROP_COOLDOWN_MS,
   DANGER_SHAKE_MAX,
   FRUIT_RESTITUTION,
@@ -17,6 +18,8 @@ import {
   FEVER_MERGE_DELAY_SEC,
   FEVER_SHAKE_MULT,
   FEVER_SHAKE_COOLDOWN_MS,
+  FEVER_MIN_DROP_LEVEL,
+  FEVER_MAX_DROP_LEVEL,
 } from './constants';
 
 /* 의도된 난이도 튜닝값 — 리밸런싱 시 이 기대값도 함께 갱신할 것 */
@@ -25,10 +28,11 @@ describe('constants', () => {
     expect(BOARD_W).toBe(420);
     expect(DEADLINE_Y).toBe(132);
     expect(OVER_LIMIT_SEC).toBe(3.0);
+    expect(MAX_DROP_LEVEL).toBe(4);
     expect(DROP_COOLDOWN_MS).toBe(300);
     expect(DANGER_SHAKE_MAX).toBe(5);
     expect(FRUIT_RESTITUTION).toBe(0.35);
-    expect(MERGE_DELAY_SEC).toBe(0.3);
+    expect(MERGE_DELAY_SEC).toBe(0.25);
     expect(COMBO_WINDOW_FRAMES).toBe(120);
   });
 
@@ -42,5 +46,7 @@ describe('constants', () => {
     expect(FEVER_MERGE_DELAY_SEC).toBe(0.05);
     expect(FEVER_SHAKE_MULT).toBe(1.5);
     expect(FEVER_SHAKE_COOLDOWN_MS).toBe(1000);
+    expect(FEVER_MIN_DROP_LEVEL).toBe(2);
+    expect(FEVER_MAX_DROP_LEVEL).toBe(5);
   });
 });
