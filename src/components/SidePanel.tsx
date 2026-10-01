@@ -19,6 +19,8 @@ export function SidePanel({ open, onClose, onRestart }: SidePanelProps) {
   const toggleSound = useGameStore((s) => s.toggleSound);
   const setBgmVolume = useGameStore((s) => s.setBgmVolume);
   const setSfxVolume = useGameStore((s) => s.setSfxVolume);
+  const simpleControls = useGameStore((s) => s.simpleControls);
+  const setSimpleControls = useGameStore((s) => s.setSimpleControls);
 
   return (
     <aside id="mobile-panel" className={`side${open ? ' open' : ''}`}>
@@ -53,6 +55,17 @@ export function SidePanel({ open, onClose, onRestart }: SidePanelProps) {
             onPointerUp={() => sfx.ui()}
             onKeyUp={() => sfx.ui()} />
           <output>{Math.round(sfxVolume * 100)}%</output>
+        </label>
+      </div>
+      <div className="panel">
+        <h3>조작</h3>
+        <label className="setting-check">
+          <input
+            type="checkbox"
+            checked={simpleControls}
+            onChange={(event) => setSimpleControls(event.target.checked)}
+          />
+          <span>조작키 UI 단순화</span>
         </label>
       </div>
       <div className="panel">

@@ -103,10 +103,10 @@ export function GameOverOverlay({ score, onRestart, onOpenLeaderboard, onDownloa
           <button className="btn big" onClick={onRestart} disabled={submittingLeaderboard || leaderboardStatus === 'loading'}>
             <RotateCcw size={20} /> 다시 하기
           </button>
-          <button className="btn" onClick={onOpenLeaderboard}>
+          <button className="btn" onClick={onOpenLeaderboard} disabled={submittingLeaderboard || leaderboardStatus === 'loading'}>
             <Trophy size={18} /> 베스트 20 보기
           </button>
-          <button className="btn" onClick={onDownloadShot}>
+          <button className="btn" onClick={onDownloadShot} disabled={submittingLeaderboard || leaderboardStatus === 'loading'}>
             <Camera size={18} /> 기록 저장
           </button>
         </div>

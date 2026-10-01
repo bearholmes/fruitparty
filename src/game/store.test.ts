@@ -33,6 +33,7 @@ function freshState() {
     soundOn: true,
     bgmVolume: 0.5,
     sfxVolume: 1,
+    simpleControls: true,
     canShake: true,
     feverActive: false,
     feverLeft: 0,
@@ -337,6 +338,20 @@ describe('store', () => {
     freshState();
     useGameStore.getState().loadAudioSettings();
     expect(useGameStore.getState()).toMatchObject({ soundOn: false, bgmVolume: 0.4, sfxVolume: 0.7 });
+  });
+
+  it('조작키 UI 단순화 설정을 저장하고 다시 불러온다', () => {
+    const values = new Map<string, string>();
+    vi.stubGlobal('localStorage', {
+      getItem: (key: string) => values.get(key) ?? null,
+      setItem: (key: string, value: string) => values.set(key, value),
+    });
+    const state = useGameStore.getState();
+    expect(state.simpleControls).toBe(true);
+    state.setSimpleControls(false);
+    freshState();
+    useGameStore.getState().loadUiSettings();
+    expect(useGameStore.getState().simpleControls).toBe(false);
   });
 
   it('start는 게임을 시작하고 일시정지를 푼다', () => {

@@ -15,16 +15,21 @@ export function Controls({ onDrop, onShake, onMoveLeft, onMoveRight }: ControlsP
   const canShake = useGameStore((s) => s.canShake);
   const danger = useGameStore((s) => s.danger);
   const dangerShakeLeft = useGameStore((s) => s.dangerShakeLeft);
+  const simpleControls = useGameStore((s) => s.simpleControls);
   const busy = over || paused || !started;
 
   return (
-    <div className="controls">
-      <button className="btn round" onClick={onMoveLeft} aria-label="왼쪽으로 이동">
-        <ChevronLeft size={22} />
-      </button>
-      <button className="btn big" onClick={onDrop} disabled={busy}>
-        DROP
-      </button>
+    <div className={simpleControls ? 'controls simple' : 'controls'}>
+      {!simpleControls && (
+        <button className="btn round" onClick={onMoveLeft} aria-label="왼쪽으로 이동">
+          <ChevronLeft size={22} />
+        </button>
+      )}
+      {!simpleControls && (
+        <button className="btn big" onClick={onDrop} disabled={busy}>
+          DROP
+        </button>
+      )}
       <button
         className="btn shake"
         onClick={onShake}
@@ -33,9 +38,11 @@ export function Controls({ onDrop, onShake, onMoveLeft, onMoveRight }: ControlsP
       >
         {danger ? `흔들기 ${dangerShakeLeft}` : '흔들기'}
       </button>
-      <button className="btn round" onClick={onMoveRight} aria-label="오른쪽으로 이동">
-        <ChevronRight size={22} />
-      </button>
+      {!simpleControls && (
+        <button className="btn round" onClick={onMoveRight} aria-label="오른쪽으로 이동">
+          <ChevronRight size={22} />
+        </button>
+      )}
     </div>
   );
 }

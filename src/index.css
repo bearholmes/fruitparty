@@ -313,6 +313,9 @@ button:focus-visible {
   gap: 6px;
   margin-top: 6px;
 }
+.controls.simple {
+  grid-template-columns: minmax(0, 1fr);
+}
 .controls .btn {
   min-width: 0;
   padding: 0 2px;
@@ -442,6 +445,21 @@ button:focus-visible {
 .audio-control output {
   text-align: right;
   font-variant-numeric: tabular-nums;
+}
+.setting-check {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 13px;
+  font-weight: 800;
+  cursor: pointer;
+}
+.setting-check input {
+  width: 18px;
+  height: 18px;
+  margin: 0;
+  accent-color: var(--green);
+  cursor: pointer;
 }
 .evo {
   display: grid;
