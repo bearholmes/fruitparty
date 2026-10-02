@@ -72,17 +72,25 @@ button:focus-visible {
   padding: 8px;
 }
 .board-head {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) max-content;
-  grid-template-areas: 'scores menu' 'combo next';
-  align-items: stretch;
+  display: flex;
+  flex-direction: column;
   gap: 4px;
   margin-bottom: 6px;
   padding-bottom: 4px;
   border-bottom: 1px solid var(--line);
 }
+/* 행마다 독립 분할 — NEXT 폭이 점수 영역에 영향을 주지 않음 */
+.head-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.head-row > .scores,
+.head-row > .combo {
+  flex: 1 1 auto;
+  min-width: 0;
+}
 .scores {
-  grid-area: scores;
   display: flex;
   gap: 9px;
   min-width: 0;
@@ -126,9 +134,7 @@ button:focus-visible {
   font-variant-numeric: tabular-nums;
 }
 .next-pill {
-  grid-area: next;
-  justify-self: end;
-  align-self: center;
+  position: relative;
   height: 36px;
   display: flex;
   align-items: center;
@@ -346,8 +352,6 @@ button:focus-visible {
   padding: 0 9px;
 }
 .head-actions {
-  grid-area: menu;
-  justify-self: end;
   align-self: start;
   display: flex;
   gap: 6px;
@@ -504,9 +508,6 @@ button:focus-visible {
   color: var(--ink);
 }
 .combo {
-  grid-area: combo;
-  justify-self: start;
-  align-self: center;
   height: 36px;
   display: flex;
   align-items: center;
@@ -902,4 +903,20 @@ button:focus-visible {
   .btn {
     transition: none;
   }
+}
+
+.next-pill:after{
+  display: block;
+  position: absolute;
+  content: '';
+  top: 0;
+  right: 7px;
+  width: 32px;
+  height: 32px;
+  background-color: #ffd776;
+  border-radius: 5px;
+  opacity: 0.8;
+}
+#nextCanvas {
+  z-index: 1;
 }
