@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import { FRUITS, MAX_LEVEL, DROP_POOL, randDrop, FEVER_DROP_POOL, randFeverDrop } from './art';
-import { MAX_DROP_LEVEL, DROP_WEIGHTS } from './config/drops';
+import { FRUITS, MAX_LEVEL, DROP_POOL, EARLY_DROP_POOL, randDrop, FEVER_DROP_POOL, randFeverDrop } from './art';
+import { MAX_DROP_LEVEL, DROP_WEIGHTS, EARLY_GAME_DROP_LIMIT, EARLY_MAX_DROP_LEVEL } from './config/drops';
 import { FEVER_MIN_DROP_LEVEL, FEVER_MAX_DROP_LEVEL, FEVER_DROP_WEIGHTS } from './config/fever';
 
 describe('art', () => {
@@ -43,10 +43,18 @@ describe('art', () => {
     });
   });
 
-  it('randDrop은 풀 안에서만 뽑는다', () => {
+  it('randDrop은 초반엔 초반 풀, 그 이후엔 일반 풀에서만 뽑는다', () => {
     for (let i = 0; i < 300; i++) {
-      expect(DROP_POOL).toContain(randDrop());
+      expect(EARLY_DROP_POOL).toContain(randDrop(0));
+      expect(EARLY_DROP_POOL).toContain(randDrop(EARLY_GAME_DROP_LIMIT - 1));
+      expect(DROP_POOL).toContain(randDrop(EARLY_GAME_DROP_LIMIT));
+      expect(DROP_POOL).toContain(randDrop(9999));
     }
+  });
+
+  it('초반 풀은 EARLY_MAX_DROP_LEVEL까지 포함한다', () => {
+    expect(EARLY_DROP_POOL.length).toBeGreaterThan(DROP_POOL.length);
+    expect(Math.max(...EARLY_DROP_POOL)).toBe(EARLY_MAX_DROP_LEVEL);
   });
 
   it('피버 드롭 풀은 [MIN, MAX] 구간만 포함한다', () => {

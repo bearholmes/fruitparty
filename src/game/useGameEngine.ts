@@ -84,6 +84,7 @@ interface MutableGame {
   nextQueue: number[];
   dropX: number;
   canDrop: boolean;
+  dropCount: number;
   over: boolean;
   combo: number;
   comboTimer: number;
@@ -107,10 +108,11 @@ interface MutableGame {
 function createMutable(): MutableGame {
   return {
     engine: null,
-    current: randDrop(),
+    current: randDrop(0),
     nextQueue: [...useGameStore.getState().nextQueue],
     dropX: BOARD_W / 2,
     canDrop: true,
+    dropCount: 0,
     over: false,
     combo: 0,
     comboTimer: 0,
@@ -139,6 +141,7 @@ function resetMutable(st: MutableGame): void {
   st.physicsRemainderMs = 0;
   st.over = false;
   st.canDrop = true;
+  st.dropCount = 0;
   st.overTime.clear();
   st.tracker.clear();
   st.bodies.length = 0;
@@ -150,13 +153,14 @@ function resetMutable(st: MutableGame): void {
   st.pops = [];
   st.dropTimer = clearTimer(st.dropTimer);
   st.shakeTimer = clearTimer(st.shakeTimer);
-  st.current = randDrop();
-  st.nextQueue = randNextQueue();
+  /* 재시작 → 낙하 0개부터이므로 초반 풀 */
+  st.current = randDrop(0);
+  st.nextQueue = randNextQueue(0);
 }
 
 /** 새 NEXT 큐를 뽑는다 — 재시작·초기화 시점엔 피버가 꺼져 있어 일반 풀로 고정 */
-function randNextQueue(): number[] {
-  return Array.from({ length: NEXT_PREVIEW_COUNT }, () => randDrop());
+function randNextQueue(dropCount: number): number[] {
+  return Array.from({ length: NEXT_PREVIEW_COUNT }, () => randDrop(dropCount));
 }
 
 function clearTimer(t: number | null): null {
@@ -612,9 +616,10 @@ export function useGameEngine() {
     const body = createFruitBody(st.dropX, DROP_Y, st.current, DROP_FRICTION);
     Body.setVelocity(body, { x: 0, y: DROP_INITIAL_VY });
     Composite.add(st.engine.world, body);
+    st.dropCount++;
     const [head, ...rest] = st.nextQueue;
-    st.current = head ?? randDrop();
-    st.nextQueue = [...rest, st.feverT > 0 ? randFeverDrop() : randDrop()];
+    st.current = head ?? randDrop(st.dropCount);
+    st.nextQueue = [...rest, st.feverT > 0 ? randFeverDrop() : randDrop(st.dropCount)];
     useGameStore.getState().setNextQueue([...st.nextQueue]);
     drawNext(st.nextQueue);
     st.canDrop = false;

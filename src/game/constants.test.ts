@@ -4,6 +4,8 @@ import {
   DEADLINE_Y,
   OVER_LIMIT_SEC,
   MAX_DROP_LEVEL,
+  EARLY_GAME_DROP_LIMIT,
+  EARLY_MAX_DROP_LEVEL,
   DROP_COOLDOWN_MS,
   DANGER_SHAKE_MAX,
   FRUIT_RESTITUTION,
@@ -26,11 +28,13 @@ import {
 
 /* 의도된 난이도 튜닝값 — 리밸런싱 시 이 기대값도 함께 갱신할 것 */
 describe('constants', () => {
-  it('난이도 튜닝값(보드폭·데드라인·유예·쿨다운·흔들기·반발력·합체지연·콤보윈도우)이 의도와 일치한다', () => {
+  it('난이도 튜닝값(보드폭·데드라인·유예·쿨다운·흔들기·반발력·합체지연·콤보윈도우·드롭상한·초반풀)이 의도와 일치한다', () => {
     expect(BOARD_W).toBe(420);
     expect(DEADLINE_Y).toBe(132);
     expect(OVER_LIMIT_SEC).toBe(3.0);
     expect(MAX_DROP_LEVEL).toBe(4);
+    expect(EARLY_GAME_DROP_LIMIT).toBe(500);
+    expect(EARLY_MAX_DROP_LEVEL).toBe(5);
     expect(DROP_COOLDOWN_MS).toBe(300);
     expect(DANGER_SHAKE_MAX).toBe(5);
     expect(FRUIT_RESTITUTION).toBe(0.35);

@@ -1,6 +1,6 @@
 /* 과일 데이터 — 10단계 과일 정의와 드롭 풀. DOM 의존 없음 */
 
-import { MAX_DROP_LEVEL, DROP_WEIGHTS } from './config/drops';
+import { MAX_DROP_LEVEL, DROP_WEIGHTS, EARLY_GAME_DROP_LIMIT, EARLY_MAX_DROP_LEVEL } from './config/drops';
 import { FEVER_MIN_DROP_LEVEL, FEVER_MAX_DROP_LEVEL, FEVER_DROP_WEIGHTS } from './config/fever';
 
 export interface FruitPalette {
@@ -104,17 +104,24 @@ export const FRUITS: Fruit[] = [
 ];
 
 export const MAX_LEVEL = FRUITS.length - 1;
+
+function buildDropPool(maxLevel: number): number[] {
+  return DROP_WEIGHTS.flatMap((w, lv) => (lv <= maxLevel ? Array<number>(w).fill(lv) : []));
+}
+
 /** 일반 드롭 풀 — DROP_WEIGHTS를 MAX_DROP_LEVEL까지 펼친 것 */
-export const DROP_POOL: number[] = DROP_WEIGHTS.flatMap((w, lv) =>
-  lv <= MAX_DROP_LEVEL ? Array<number>(w).fill(lv) : [],
-);
+export const DROP_POOL: number[] = buildDropPool(MAX_DROP_LEVEL);
+/** 초반 드롭 풀 — DROP_WEIGHTS를 EARLY_MAX_DROP_LEVEL까지 펼친 것 */
+export const EARLY_DROP_POOL: number[] = buildDropPool(EARLY_MAX_DROP_LEVEL);
 /** 피버 중 드롭 풀 — FEVER_DROP_WEIGHTS를 [MIN, MAX] 구간만큼 펼친 것 */
 export const FEVER_DROP_POOL: number[] = FEVER_DROP_WEIGHTS.flatMap((w, lv) =>
   lv >= FEVER_MIN_DROP_LEVEL && lv <= FEVER_MAX_DROP_LEVEL ? Array<number>(w).fill(lv) : [],
 );
 
-export function randDrop(): number {
-  return DROP_POOL[Math.floor(Math.random() * DROP_POOL.length)] ?? 0;
+/** 누적 낙하 개수 구간에 맞는 풀에서 뽑는다 — 초반엔 상위 과일도 등장 */
+export function randDrop(dropCount: number): number {
+  const pool = dropCount < EARLY_GAME_DROP_LIMIT ? EARLY_DROP_POOL : DROP_POOL;
+  return pool[Math.floor(Math.random() * pool.length)] ?? 0;
 }
 
 export function randFeverDrop(): number {

@@ -96,7 +96,7 @@ export function SidePanel({ open, onClose, onRestart }: SidePanelProps) {
             단감 2개가 만나면 폭발 + <b>30초 피버타임</b>(점수 3배·주변 정리)!
           </li>
           <li>
-            떨어질 과일은 <b>1~5단계</b> 중 랜덤.
+            떨어질 과일은 <b>1~5단계</b> 중 랜덤 (500개 전까지는 6단계도 등장).
           </li>
           <li>
             <b>↑↓</b> 키로 박스 흔들기 (2초 쿨다운, 피버 중 1초·강화).

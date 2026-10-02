@@ -1,6 +1,10 @@
-/* 낙하 과일 풀 — 최대 레벨·레벨별 가중치 */
+/* 낙하 과일 풀 — 최대 레벨·레벨별 가중치·초반 완화 */
 
 /** 낙하 과일 최대 레벨(0-based 인덱스) — 이 레벨 이하만 드롭 풀에 포함 */
 export const MAX_DROP_LEVEL = 4;
 /** 레벨별 드롭 가중치 — 인덱스 = 과일 레벨, 값 = 풀 내 개수(뽑힐 확률 비중) */
 export const DROP_WEIGHTS = [3, 3, 2, 2, 1, 1, 1, 1, 1, 1];
+/** 초반 완화 구간 — 누적 낙하 개수가 이 값 미만이면 상위 과일도 드롭 */
+export const EARLY_GAME_DROP_LIMIT = 500;
+/** 초반 드롭 최대 레벨(0-based 인덱스) */
+export const EARLY_MAX_DROP_LEVEL = 5;
